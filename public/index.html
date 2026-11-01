@@ -486,6 +486,7 @@ async function falha(e){
     if(w===false){S.ro=true;toast('Você não tem permissão para gravar. Peça nível Contribuidor ou Editor nesta página.');render()}
     else toast('Este registro foi alterado ou excluído por outra pessoa. A tela já mostra a versão atual.');
   }
+  else if(c==='not_granted')toast(e.message||'Seu perfil não pode fazer esta alteração.');
   else if(c==='quota_exceeded')toast('O banco de dados atingiu o limite. Exclua registros antigos para continuar.');
   else if(c==='resource_exhausted')toast('Muitas gravações seguidas. Aguarde alguns segundos e tente de novo.');
   else toast('Não foi possível salvar agora. Tente novamente.');
@@ -1319,6 +1320,7 @@ function vWhatsapp(){
    <div class="ro">${conv.length} conversa${conv.length===1?'':'s'}${w.conectadoEm?' · conectado em '+fmtD(w.conectadoEm):''}${w.nomePerfil?' · perfil '+esc(w.nomePerfil):''}</div>
    ${w.erro?`<p class="err" style="margin:0">${esc(w.erro)}</p>`:''}
    <label class="f">Responsável pelos leads deste número<select class="inp" id="wa-resp-${w.id}" data-waresp="${w.id}">${membrosOpts(w.responsavel)}</select></label>
+   <label class="chk"><input type="checkbox" id="wa-ld-${w.id}" data-waleads="${w.id}" ${w.leadsDaEquipe!==false?'checked':''}> Criar lead também quando a equipe inicia a conversa pelo celular</label>
    <div class="tools">${w.status!=='conectado'?`<button class="btn pri" data-a="wa-qr" data-id="${w.id}"><i class="fa-solid fa-qrcode"></i> Gerar QR Code</button>`:`<button class="btn" data-go="conversas">Ver conversas</button>`}
    ${w.status==='conectado'?`<button class="btn danger" data-a="wa-desc" data-id="${w.id}">Desconectar</button>`:''}<button class="btn ghost" data-a="wa-del" data-id="${w.id}">Remover</button></div></section>`}).join('')}</div>`}
   <section class="panel"><div class="panel-h"><h2>Como os contatos são classificados</h2></div>
@@ -1334,8 +1336,9 @@ function formWaNovo(){
   abrir('Conectar número de WhatsApp',`
   <label class="f">Nome para identificar o número *<input class="inp" id="wa-nome" name="nome" required placeholder="Comercial · Juliana, Atacado, Loja"></label>
   <label class="f">Responsável pelos leads que chegarem<select class="inp" id="wa-r" name="responsavel">${membrosOpts(S.myId)}</select></label>
+  <label class="chk"><input type="checkbox" id="wa-ld" name="leadsDaEquipe" checked> Criar lead também quando a equipe inicia a conversa pelo celular (desmarque se o número também fala com fornecedores ou contatos pessoais)</label>
   <p class="ro" style="margin:0">Depois de salvar, o QR Code aparece na tela. Tenha o celular desse número em mãos.</p>`,
-  async fd=>{try{const r=await waApi('/api/wa/connect',{nome:fd.get('nome'),responsavel:fd.get('responsavel')||null});setTimeout(()=>formQr(r.id),50);return true}catch(e){toast(e.message||'Não foi possível iniciar a conexão.');return false}},{submitLabel:'Gerar QR Code'});
+  async fd=>{try{const r=await waApi('/api/wa/connect',{nome:fd.get('nome'),responsavel:fd.get('responsavel')||null,leadsDaEquipe:!!fd.get('leadsDaEquipe')});setTimeout(()=>formQr(r.id),50);return true}catch(e){toast(e.message||'Não foi possível iniciar a conexão.');return false}},{submitLabel:'Gerar QR Code'});
 }
 let QR_TIMER=null;
 function formQr(id){
@@ -1380,7 +1383,7 @@ function chatPane(c){
   const msgs=S.msgs.slice().sort((a,b)=>(a.em||0)-(b.em||0));let dia='';
   return`<div class="ch-h"><button type="button" class="btn ghost sm ch-back" data-a="fechar-conv" aria-label="Voltar"><i class="fa-solid fa-arrow-left"></i></button><div class="grow"><b>${esc(cl?.nome||c.nome)}</b><div class="ro">${esc(fmtTelBR(c.telefone))} · ${esc(c.conexaoNome||'')} · ${esc(pessoa(c.responsavel))}</div></div>
    ${cl&&pode('crm')?`<select class="inp" style="width:auto" aria-label="Etapa do funil" data-etapa="${cl.id}">${ETAPAS.map(x=>`<option value="${x.id}" ${x.id===(cl.etapa||'lead')?'selected':''}>${x.nome}</option>`).join('')}</select>`:''}
-   ${cl?`<button class="btn sm" data-a="edit-cliente" data-id="${cl.id}">Ficha</button>`:''}${cl&&pode('vendas')?`<button class="btn sm" data-a="nova-venda" data-cli="${cl.id}">Pedido</button>`:''}</div>
+   ${cl?`<button class="btn sm" data-a="edit-cliente" data-id="${cl.id}">Ficha</button>`:pode('crm')?`<button class="btn sm pri" data-a="cv-lead" data-id="${c.id}"><i class="fa-solid fa-user-plus"></i> Adicionar ao funil</button>`:''}${cl&&pode('vendas')?`<button class="btn sm" data-a="nova-venda" data-cli="${cl.id}">Pedido</button>`:''}</div>
   <div class="msgs" id="msgs">${msgs.length?msgs.map(m=>{const d=new Date(m.em).toLocaleDateString('pt-BR');const sep=d!==dia?`<div class="msg-dia">${dia=d}</div>`:'';return sep+`<div class="msg ${m.deMim?'eu':''}"><div class="bolha">${esc(m.texto).replace(/\n/g,'<br>')}<small>${new Date(m.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}${m.deMim&&m.por?' · '+esc(pessoa(m.por)):''}</small></div></div>`}).join(''):'<p class="ro" style="text-align:center">Carregando mensagens…</p>'}</div>
   ${pode('crm')?`<div class="compose">${on?`<textarea class="inp" id="cv-txt" rows="2" placeholder="Escreva uma resposta. Enter envia, Shift+Enter quebra a linha.">${esc(DRAFT[c.id]||'')}</textarea><button class="btn pri" data-a="cv-enviar" data-id="${c.id}"><i class="fa-solid fa-paper-plane"></i> Enviar</button>`:`<p class="notice warn" style="margin:0;flex:1">O número ${esc(c.conexaoNome||'')} está desconectado. Conecte de novo na aba WhatsApp para responder por aqui.</p>`}</div>`:''}`;
 }
@@ -1415,7 +1418,8 @@ function vEquipe(){
   const adm=S.canEdit&&!S.ro;
   const sel=(id,cur)=>`<select class="inp" id="papel-${esc(id)}" data-papel="${esc(id)}" ${adm?'':'disabled'} style="width:auto"><option value="">Escolha o perfil</option>${Object.entries(PAPEIS).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${v}</option>`).join('')}</select>`;
   const temEx=[...S.clientes,...S.produtos,...S.vendas,...S.producao,...S.campanhas,...S.nps].some(x=>x.exemplo);
-  return`<div class="head"><div><h1>Equipe</h1><p class="sub">Quem usa o sistema e o que cada perfil pode fazer</p></div></div>
+  carregarContas();const ct=S.contas||{};
+  return`<div class="head"><div><h1>Equipe</h1><p class="sub">Funcionários, logins e o que cada perfil pode fazer</p></div>${adm?'<div class="tools"><button class="btn pri" data-a="novo-func"><i class="fa-solid fa-user-plus"></i> Cadastrar funcionário</button></div>':''}</div>
   ${adm?'':'<div class="notice warn">Somente quem tem perfil de Gestão libera acessos e muda perfis.</div>'}
   <div class="grid2">
    <section class="panel"><div class="panel-h"><h2>Pedidos de acesso</h2><span class="ro">${pend.length}</span></div>
@@ -1428,14 +1432,47 @@ function vEquipe(){
    </section>
   </div>
   <section class="panel"><div class="panel-h"><h2>Membros</h2><span class="ro">${membros.length+1}</span></div>
-   <div class="list"><div class="li"><div class="grow"><div class="t">Dono da página</div><div class="d">Sempre com perfil de Gestão</div></div><span class="pill acc">Gestão</span></div>
-   ${membros.map(([id,m])=>`<div class="li"><img src="${esc(S.profiles[id]?.avatarUrl||'')}" alt="" width="28" height="28" style="border-radius:50%"><div class="grow"><div class="t">${esc(pessoa(id))}</div><div class="d">Liberado em ${fmtD(m.em)}</div></div>${sel(id,m.papel)}${adm?`<button class="btn sm danger" data-a="rem-membro" data-id="${esc(id)}">Remover</button>`:''}</div>`).join('')}</div>
+   <div class="list"><div class="li"><div class="grow"><div class="t">Dono do sistema${Object.values(ct).find(u=>u.dono)?' · '+esc(Object.values(ct).find(u=>u.dono).name):''}</div><div class="d">${esc(Object.values(ct).find(u=>u.dono)?.email||'')}${Object.values(ct).find(u=>u.dono)?' · ':''}Sempre com perfil de Gestão</div></div><span class="pill acc">Gestão</span></div>
+   ${membros.map(([id,m])=>`<div class="li"><img src="${esc(S.profiles[id]?.avatarUrl||'')}" alt="" width="28" height="28" style="border-radius:50%"><div class="grow"><div class="t">${esc(pessoa(id))}</div><div class="d">${esc([ct[id]?.email,m.cargo,m.telefone].filter(Boolean).join(' · '))}${ct[id]?.email||m.cargo||m.telefone?' · ':''}Liberado em ${fmtD(m.em)}</div></div>${sel(id,m.papel)}${adm&&ct[id]?`<button class="btn sm" data-a="nova-senha" data-id="${esc(id)}">Nova senha</button>`:''}${adm?`<button class="btn sm danger" data-a="rem-membro" data-id="${esc(id)}">Remover</button>`:''}</div>`).join('')}</div>
   </section>
   ${papel()==='gestao'&&!S.ro?`<section class="panel"><div class="panel-h"><h2>Dados de exemplo</h2></div><p class="ro">Carregue alguns registros fictícios marcados como [Exemplo] para testar o fluxo, e remova todos de uma vez depois.</p><div class="tools">${temEx?'<button class="btn danger" data-a="limpar-ex">Remover dados de exemplo</button>':'<button class="btn" data-a="exemplos">Carregar dados de exemplo</button>'}</div></section>`:''}`;
 }
+let CONTAS_EM=0;
+function carregarContas(forcar){
+  if(papel()!=='gestao'||(!forcar&&Date.now()-CONTAS_EM<30000))return;CONTAS_EM=Date.now();
+  waApi('/api/contas').then(l=>{S.contas=Object.fromEntries(l.map(u=>[u.id,u]));if(S.view==='equipe')render()}).catch(()=>{});
+}
+function mostrarAcesso(titulo,nome,email,senha,tel){
+  const link=location.origin+'/';
+  const txt=`Olá${nome?' '+nome.split(' ')[0]:''}! Seu acesso ao sistema da Draven Sports:\nEndereço: ${link}\nE-mail: ${email}\nSenha: ${senha}\nTroque a senha com a gestão se precisar.`;
+  abrir(titulo,`<p class="sub" style="margin:0">Anote ou envie agora: por segurança, a senha não aparece de novo depois que esta janela fechar.</p>
+  <div class="mini"><div><small>Endereço</small><b class="sm">${esc(link)}</b></div><div><small>E-mail</small><b class="sm">${esc(email)}</b></div><div><small>Senha</small><b class="sm mono">${esc(senha)}</b></div></div>
+  <div class="tools"><button type="button" class="btn" data-a="copiar" data-txt="${esc(txt)}"><i class="fa-regular fa-copy"></i> Copiar dados de acesso</button>${waBtn(tel,txt,'Enviar no WhatsApp')}</div>`,null,{});
+}
+function formFuncionario(){
+  abrir('Cadastrar funcionário',`
+  <p class="sub" style="margin:0">A gestão cria a conta com e-mail e senha. O funcionário entra com esses dados e já cai no perfil escolhido.</p>
+  <div class="fg">
+   <label class="f">Nome *<input class="inp" id="fu-nome" name="nome" required></label>
+   <label class="f">E-mail (será o login) *<input class="inp" id="fu-email" name="email" type="email" required></label>
+   <label class="f">Perfil de acesso *<select class="inp" id="fu-papel" name="papel">${Object.entries(PAPEIS).map(([k,v])=>`<option value="${k}" ${k==='vendedor'?'selected':''}>${v}</option>`).join('')}</select></label>
+   <label class="f">Cargo / função<input class="inp" id="fu-cargo" name="cargo" placeholder="Vendedor externo, Costura, Expedição…"></label>
+   <label class="f">Telefone / WhatsApp<input class="inp" id="fu-tel" name="telefone" inputmode="tel"></label>
+   <label class="f">Senha inicial<input class="inp" id="fu-senha" name="password" placeholder="Deixe vazio para gerar uma" autocomplete="new-password"></label>
+  </div><p class="err" id="v-err" hidden></p>`,
+  async fd=>{
+    const d={name:fd.get('nome'),email:fd.get('email'),papel:fd.get('papel'),cargo:fd.get('cargo'),telefone:fd.get('telefone'),password:fd.get('password')};
+    try{const r=await waApi('/api/contas/criar',d);carregarContas(true);setTimeout(()=>mostrarAcesso('Funcionário cadastrado',d.name,r.email,r.senha,d.telefone),50);return true}
+    catch(e){erro('#v-err',e.message||'Não foi possível cadastrar.');return false}
+  },{submitLabel:'Cadastrar'});
+}
+async function trocarSenha(id){
+  const c=S.contas?.[id];if(!await confirmar(`Gerar uma senha nova para ${c?.name||pessoa(id)}? A senha atual deixa de funcionar e a pessoa sai do sistema em todos os aparelhos.`,'Gerar senha nova'))return;
+  try{const r=await waApi('/api/contas/senha',{id});mostrarAcesso('Senha nova gerada',c?.name||pessoa(id),r.email,r.senha,S.equipe[id]?.telefone)}catch(e){toast(e.message||'Não foi possível trocar a senha.')}
+}
 async function definirPapel(id,p){
   try{ if(!p){await S.db.doc('equipe/'+id).delete();toast('Acesso removido');return}
-    await S.db.doc('equipe/'+id).set({papel:p,em:S.equipe[id]?.em||Date.now()});toast(`Perfil definido: ${PAPEIS[p]}`)}
+    await S.db.doc('equipe/'+id).set({...(S.equipe[id]||{}),papel:p,em:S.equipe[id]?.em||Date.now()});toast(`Perfil definido: ${PAPEIS[p]}`)}
   catch(e){toast('Só Editores ou o dono da página podem mudar perfis.')}
 }
 
@@ -1553,6 +1590,13 @@ document.addEventListener('click',async e=>{
     case'wa-desc':if(await confirmar('Desconectar este número? As conversas e os leads continuam no CRM.','Desconectar')){try{await waApi('/api/wa/disconnect',{id});toast('Número desconectado')}catch(err){toast(err.message)}}break;
     case'wa-del':if(await confirmar('Remover este número do CRM? As conversas e os leads continuam guardados.','Remover')){try{await waApi('/api/wa/remove',{id});toast('Número removido')}catch(err){toast(err.message)}}break;
     case'abrir-conv':abrirConversa(id);break;
+    case'cv-lead':{const c=S.conversas.find(x=>x.id===id);if(!c)break;el.disabled=true;const agora=Date.now();
+      try{const cid=await salvar('clientes',null,{nome:c.nome||fmtTelBR(c.telefone),telefone:fmtTelBR(c.telefone),tipo:'Outro',origem:'WhatsApp',origemDetalhe:c.conexaoNome||'',whatsConexao:c.conexaoId,etapa:'lead',responsavel:c.responsavel||S.myId,valorEstimado:0,
+        proximaAcao:'Acompanhar conversa no WhatsApp',dataProxima:agora,consentWhats:false,consentEmail:false,criadoEm:agora,atualizadoEm:agora,ultimaWhatsEm:c.ultimaEm||agora,entradaWhats:true,criadoPor:S.myId,
+        historico:[{txt:'Adicionado ao funil a partir de uma conversa do WhatsApp iniciada pela equipe',em:agora,por:S.myId}]});
+        await col('conversas').doc(id).update({clienteId:cid});toast('Contato adicionado ao funil como Novo lead')}catch(err){el.disabled=false}break}
+    case'novo-func':formFuncionario();break;
+    case'nova-senha':trocarSenha(id);break;
     case'fechar-conv':S.convSel=null;if(MSGS_UNSUB){MSGS_UNSUB();MSGS_UNSUB=null}render();break;
     case'cv-enviar':enviarConversa(id,el);break;
     case'wa-msg':formWaMsg(id);break;
@@ -1584,6 +1628,7 @@ document.addEventListener('click',async e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#gres').hidden=true;if(e.key==='Enter'&&!e.shiftKey&&e.target.id==='cv-txt'){e.preventDefault();enviarConversa(S.convSel,null);return}if(e.key==='Enter'&&e.target.classList?.contains('card'))e.target.click()});
 document.addEventListener('change',async e=>{
   const t=e.target;
+  if(t.dataset.waleads){col('whatsapp').doc(t.dataset.waleads).update({leadsDaEquipe:t.checked}).then(()=>toast(t.checked?'Conversas iniciadas pela equipe também viram lead':'Conversas iniciadas pela equipe ficam só em Conversas')).catch(()=>{});return}
   if(t.dataset.waresp){col('whatsapp').doc(t.dataset.waresp).update({responsavel:t.value||null}).then(()=>toast('Responsável atualizado')).catch(()=>{});return}
   if(t.dataset.etapa){await salvar('clientes',t.dataset.etapa,{etapa:t.value,atualizadoEm:Date.now()}).catch(()=>{});toast('Etapa atualizada');return}
   if(t.dataset.papel!==undefined&&t.dataset.papel){if(t.value)definirPapel(t.dataset.papel,t.value);return}

@@ -59,7 +59,7 @@ const $=s=>document.querySelector(s);let modo='login',pode=true;
 function ver(m){modo=m;const c=m!=='login';$('#ln').hidden=!c;$('#t').textContent=m==='primeiro'?'Criar conta da gestão':c?'Criar conta':'Entrar';
   $('#s').textContent=m==='primeiro'?'Primeiro acesso: esta conta será a administradora do sistema.':c?'Depois de criar, a gestão libera o seu perfil.':'Use o e-mail e a senha da sua conta.';
   $('#b').textContent=c?'Criar conta':'Entrar';$('#senha').autocomplete=c?'new-password':'current-password';$('#x').hidden=m==='primeiro'||(!pode&&m==='login');$('#x').textContent=c?'Já tenho conta':'Criar minha conta';$('#e').hidden=true}
-fetch('/api/auth/state').then(r=>r.json()).then(s=>{pode=s.signup;ver(s.hasUsers?'login':'primeiro')}).catch(()=>{});
+fetch('/api/auth/state').then(r=>r.json()).then(s=>{pode=s.signup;ver(s.hasUsers?'login':'primeiro');if(s.reservado)$('#s').textContent='Primeiro acesso: use o e-mail da gestão definido no servidor (OWNER_EMAIL). Esta conta será a administradora do sistema.'}).catch(()=>{});
 $('#x').onclick=()=>ver(modo==='login'?'cadastro':'login');
 $('#f').onsubmit=async e=>{e.preventDefault();const b=$('#b');b.disabled=true;$('#e').hidden=true;
   const body=modo==='login'?{email:$('#email').value,password:$('#senha').value}:{name:$('#nome').value,email:$('#email').value,password:$('#senha').value};

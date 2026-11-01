@@ -153,7 +153,10 @@ export function createWhatsApp({ store, rid, dataDir, ai, fake }) {
     const nomeWA = fromMe ? '' : String(m.pushName || '').trim();
     const origemTxt = con.nome ? `WhatsApp ${con.nome}` : 'WhatsApp';
 
-    if (!cliente) {
+    // conversa que a equipe começou pelo celular com um número fora do CRM: vira lead só se o número estiver configurado para isso
+    const semLead = !cliente && fromMe && con.leadsDaEquipe === false;
+    if (semLead) { /* fica só em Conversas, com o botão "Adicionar ao funil" */ }
+    else if (!cliente) {
       const g = classificar(nomeWA + ' ' + conteudo.texto);
       clienteId = rid();
       cliente = {
@@ -182,9 +185,9 @@ export function createWhatsApp({ store, rid, dataDir, ai, fake }) {
 
     store.set(`conversas/${convId}/msgs`, msgId, { texto: conteudo.texto, tipo: conteudo.tipo, deMim: fromMe, em, por: null });
     store.set('conversas', convId, {
-      ...(conv || {}), conexaoId: cid, conexaoNome: con.nome || '', clienteId, telefone: tel, jid, nome: cliente.nome,
+      ...(conv || {}), conexaoId: cid, conexaoNome: con.nome || '', clienteId: clienteId || null, telefone: tel, jid, nome: cliente?.nome || conv?.nome || (tel ? fmtTel(tel) : 'Contato do WhatsApp'),
       ultimaMsg: cut(conteudo.texto, 140), ultimaEm: em, ultimaDeMim: fromMe, naoLidas: fromMe ? 0 : (conv?.naoLidas || 0) + 1,
-      responsavel: cliente.responsavel || con.responsavel || null, criadoEm: conv?.criadoEm || agora,
+      responsavel: cliente?.responsavel || con.responsavel || null, criadoEm: conv?.criadoEm || agora,
     });
   }
 
@@ -204,10 +207,10 @@ Responda só com JSON, sem texto fora dele: {"tipo": um de ${JSON.stringify(TIPO
 
   return {
     async boot() { for (const c of store.list('whatsapp')) if (fs.existsSync(authDir(c.id)) && c.data.status !== 'desconectado') start(c.id).catch(e => console.error(e)); },
-    async create({ nome, responsavel }, me) {
+    async create({ nome, responsavel, leadsDaEquipe }, me) {
       const n = String(nome || '').trim(); if (!n) { const e = new Error('Dê um nome para identificar este número.'); e.status = 400; e.code = 'invalid_argument'; throw e; }
       const id = 'w' + rid(10);
-      store.set('whatsapp', id, { nome: n, responsavel: responsavel || null, status: 'iniciando', criadoEm: Date.now(), criadoPor: me.id });
+      store.set('whatsapp', id, { nome: n, responsavel: responsavel || null, leadsDaEquipe: leadsDaEquipe !== false, status: 'iniciando', criadoEm: Date.now(), criadoPor: me.id });
       start(id).catch(e => { console.error(e); status(id, { status: 'erro', erro: 'Não foi possível iniciar a conexão.' }); });
       return { id };
     },

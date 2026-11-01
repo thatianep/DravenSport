@@ -1,5 +1,5 @@
 FROM node:22-slim
-# git é necessário para instalar uma dependência da biblioteca do WhatsApp
+# git fica instalado para o caso de uma versão futura da biblioteca do WhatsApp voltar a precisar dele
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json ./

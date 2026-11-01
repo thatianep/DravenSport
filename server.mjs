@@ -13,6 +13,10 @@ const PUB = path.join(DIR, 'public');
 const DATA = process.env.DATA_DIR || path.join(DIR, 'data');
 const PORT = Number(process.env.PORT) || 3000;
 const ALLOW_SIGNUP = process.env.ALLOW_SIGNUP !== 'false';
+// e-mail de quem será o dono do sistema; sem ele, a primeira conta criada vira a dona
+const OWNER_EMAIL = String(process.env.OWNER_EMAIL || '').trim().toLowerCase();
+// só confie no IP informado pelo proxy (X-Forwarded-For) quando houver um proxy na frente
+const TRUST_PROXY = /^(1|true|sim)$/i.test(process.env.TRUST_PROXY || '');
 const AI_KEY = process.env.ANTHROPIC_API_KEY || '';
 const AI_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 fs.mkdirSync(DATA, { recursive: true });
@@ -76,42 +80,76 @@ export const rid = (n = 20) => { const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij
 const streams = new Set();
 function emit(col, id, data) {
   const msg = `data: ${JSON.stringify({ t: 'doc', col, id, data })}\n\n`;
-  for (const s of streams) { try { if (canRead(s.user, col)) s.res.write(msg); } catch {} }
+  for (const s of streams) {
+    try {
+      if (!canRead(s.user, col, id)) continue;
+      s.res.write(col === 'produtos' && data ? `data: ${JSON.stringify({ t: 'doc', col, id, data: filtrar(s.user, col, data) })}\n\n` : msg);
+    } catch {}
+  }
 }
 setInterval(() => { for (const s of streams) { try { s.res.write(': ping\n\n'); } catch {} } }, 25000).unref();
 
 // ---------- usuários e sessões ----------
 function hashPass(p, salt = crypto.randomBytes(16).toString('hex')) { return salt + ':' + crypto.scryptSync(p, salt, 64).toString('hex'); }
 function checkPass(p, h) { const [s, x] = h.split(':'); const y = crypto.scryptSync(p, s, 64); const xb = Buffer.from(x, 'hex'); return xb.length === y.length && crypto.timingSafeEqual(xb, y); }
-function sign(uid) { const exp = Date.now() + 30 * 864e5; const b = `${uid}.${exp}`; return b + '.' + crypto.createHmac('sha256', SECRET).update(b).digest('base64url'); }
+const assinar = (uid, exp, pass) => crypto.createHmac('sha256', SECRET).update(`${uid}.${exp}.${pass}`).digest('base64url');
+function sign(u) { const exp = Date.now() + 30 * 864e5; return `${u.id}.${exp}.${assinar(u.id, exp, u.pass)}`; }
 function cookies(req) { const o = {}; (req.headers.cookie || '').split(';').forEach(p => { const i = p.indexOf('='); if (i > 0) o[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim()); }); return o; }
 function session(req) {
   const c = cookies(req).sid; if (!c) return null;
   const [uid, exp, sig] = c.split('.'); if (!sig || Number(exp) < Date.now()) return null;
-  const ok = crypto.createHmac('sha256', SECRET).update(`${uid}.${exp}`).digest('base64url');
-  if (sig.length !== ok.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(ok))) return null;
   const u = Q.userById.get(uid); if (!u) return null;
+  const ok = assinar(uid, exp, u.pass);
+  if (sig.length !== ok.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(ok))) return null;
   return { id: u.id, name: u.name, email: u.email, isOwner: kv.get('owner') === u.id };
 }
 function role(u) { if (!u) return null; return u.isOwner ? 'gestao' : (store.get('equipe', u.id)?.papel || null); }
-function canRead(u, col) { if (role(u)) return true; const top = col.split('/')[0]; return top === 'equipe' || top === 'acessos'; }
-function canWrite(u, col, id) {
+// Quem lê e quem grava cada coleção. Espelha as permissões da tela, para valerem também em chamadas diretas à API.
+const LER = { producao: ['gestao', 'estoque'], conversas: ['gestao', 'vendedor'], whatsapp: ['gestao', 'vendedor'] };
+const GRAVAR = {
+  clientes: ['gestao', 'vendedor'], vendas: ['gestao', 'vendedor'], campanhas: ['gestao', 'vendedor'], nps: ['gestao', 'vendedor'], conversas: ['gestao', 'vendedor'],
+  producao: ['gestao', 'estoque'], produtos: ['gestao', 'estoque'], movimentos: ['gestao', 'vendedor', 'estoque'], whatsapp: ['gestao'], equipe: ['gestao'],
+};
+// gravações parciais que outros perfis precisam fazer: vendas dão baixa no estoque; o estoque marca a entrega
+const PARCIAL = {
+  vendedor: { produtos: d => Object.keys(d).every(k => k === 'estoque') },
+  estoque: { vendas: d => Object.keys(d).every(k => k === 'status' || k === 'entregueEm') && d.status === 'entregue' },
+};
+const semDono = (u, col) => !role(u) && (col === 'equipe' || col === 'acessos');
+function canRead(u, col, id) {
   const r = role(u); const top = col.split('/')[0];
-  if (top === 'equipe') return r === 'gestao';
-  if (top === 'acessos') return r === 'gestao' || (col === 'acessos' && id === u.id);
-  if (top === 'whatsapp') return r === 'gestao';
-  return !!r;
+  if (!r) return (col === 'equipe' || col === 'acessos') && (id === undefined || id === u.id);
+  return !LER[top] || LER[top].includes(r);
+}
+function canWrite(u, col, id, op, data) {
+  const r = role(u); const top = col.split('/')[0];
+  if (top === 'acessos') return r === 'gestao' || (col === 'acessos' && id === u.id && op !== 'delete');
+  if (!r) return false;
+  if (op === 'delete') return r === 'gestao';
+  if ((GRAVAR[top] || ['gestao']).includes(r)) return true;
+  return op === 'update' && !!PARCIAL[r]?.[top]?.(data || {});
+}
+// o perfil Vendas não vê custos
+function filtrar(u, col, data) {
+  if (!data || col !== 'produtos' || role(u) !== 'vendedor') return data;
+  const { custo, ...resto } = data; return resto;
 }
 function setCookie(req, res, val, maxAge) {
   const secure = req.headers['x-forwarded-proto'] === 'https' || req.socket.encrypted;
   res.setHeader('set-cookie', `sid=${encodeURIComponent(val)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`);
 }
 const tries = new Map();
+const ipDe = req => (TRUST_PROXY && req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket.remoteAddress;
+// além do limite por IP, cada e-mail aceita até 10 senhas erradas a cada 15 minutos
+const falhas = new Map();
+function falhasDe(email) { const now = Date.now(); const t = (falhas.get(email) || []).filter(x => now - x < 15 * 60000); falhas.set(email, t); return t; }
 function rateLimit(req) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  const ip = ipDe(req);
   const now = Date.now(); const t = (tries.get(ip) || []).filter(x => now - x < 60000); t.push(now); tries.set(ip, t);
   if (t.length > 12) throw err(429, 'resource_exhausted', 'Muitas tentativas. Aguarde um minuto.');
 }
+setInterval(() => { const now = Date.now(); for (const [k, t] of tries) if (!t.some(x => now - x < 60000)) tries.delete(k); for (const [k, t] of falhas) if (!t.some(x => now - x < 15 * 60000)) falhas.delete(k); }, 10 * 60000).unref();
+const novaSenha = () => { const c = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'; return [...crypto.randomBytes(10)].map(x => c[x % c.length]).join(''); };
 
 // ---------- IA (opcional) ----------
 export async function askClaude(input, maxTokens = 1500) {
@@ -150,28 +188,32 @@ const leases = new Map();
 async function api(req, res, url) {
   const p = url.pathname, M = req.method;
 
-  if (p === '/api/auth/state') return send(res, 200, { hasUsers: Q.userCount.get().n > 0, signup: ALLOW_SIGNUP || Q.userCount.get().n === 0 });
+  if (p === '/api/auth/state') { const sem = !kv.get('owner'); return send(res, 200, { hasUsers: !sem, signup: ALLOW_SIGNUP || sem, reservado: sem && !!OWNER_EMAIL }); }
   if (p === '/api/auth/signup' && M === 'POST') {
     rateLimit(req);
-    const b = await body(req); const first = Q.userCount.get().n === 0;
-    if (!first && !ALLOW_SIGNUP) throw err(403, 'not_granted', 'O cadastro está fechado. Peça para a gestão liberar.');
+    const b = await body(req);
     const email = String(b.email || '').trim().toLowerCase(), name = String(b.name || '').trim(), pass = String(b.password || '');
+    const first = !kv.get('owner') && (!OWNER_EMAIL || email === OWNER_EMAIL);
+    if (!kv.get('owner') && OWNER_EMAIL && !first) throw err(403, 'not_granted', 'O sistema ainda não foi ativado. O primeiro acesso é reservado ao e-mail da gestão definido no servidor.');
+    if (!first && !ALLOW_SIGNUP) throw err(403, 'not_granted', 'O cadastro está fechado. Peça para a gestão criar o seu acesso.');
     if (!/^\S+@\S+\.\S+$/.test(email)) throw err(400, 'invalid_argument', 'Informe um e-mail válido.');
     if (name.length < 2) throw err(400, 'invalid_argument', 'Informe seu nome.');
     if (pass.length < 8) throw err(400, 'invalid_argument', 'A senha precisa ter pelo menos 8 caracteres.');
     if (Q.userByEmail.get(email)) throw err(400, 'invalid_argument', 'Já existe uma conta com este e-mail.');
-    const id = 'u_' + rid(22);
-    Q.userIns.run(id, email, name, hashPass(pass), Date.now());
+    const id = 'u_' + rid(22); const h = hashPass(pass);
+    Q.userIns.run(id, email, name, h, Date.now());
     if (first) kv.set('owner', id); else store.set('acessos', id, { em: Date.now() });
-    setCookie(req, res, sign(id), 30 * 86400);
+    setCookie(req, res, sign({ id, pass: h }), 30 * 86400);
     return send(res, 200, { ok: true, owner: first });
   }
   if (p === '/api/auth/login' && M === 'POST') {
     rateLimit(req);
-    const b = await body(req);
-    const u = Q.userByEmail.get(String(b.email || '').trim().toLowerCase());
-    if (!u || !checkPass(String(b.password || ''), u.pass)) throw err(401, 'invalid_argument', 'E-mail ou senha incorretos.');
-    setCookie(req, res, sign(u.id), 30 * 86400);
+    const b = await body(req); const email = String(b.email || '').trim().toLowerCase();
+    if (falhasDe(email).length >= 10) throw err(429, 'resource_exhausted', 'Muitas senhas erradas para este e-mail. Aguarde 15 minutos ou peça para a gestão criar uma senha nova.');
+    const u = Q.userByEmail.get(email);
+    if (!u || !checkPass(String(b.password || ''), u.pass)) { falhasDe(email).push(Date.now()); throw err(401, 'invalid_argument', 'E-mail ou senha incorretos.'); }
+    falhas.delete(email);
+    setCookie(req, res, sign(u), 30 * 86400);
     return send(res, 200, { ok: true });
   }
   if (p === '/api/auth/logout' && M === 'POST') { setCookie(req, res, '', 0); return send(res, 200, { ok: true }); }
@@ -182,29 +224,31 @@ async function api(req, res, url) {
 
   if (p === '/api/me') return send(res, 200, { ...me, papel, ai: !!AI_KEY });
   if (p === '/api/users') {
-    const ids = String(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 200); const o = {};
+    const ids = String(url.searchParams.get('ids') || '').split(',').filter(Boolean).filter(i => papel || i === me.id).slice(0, 200); const o = {};
     for (const id of ids) { const u = Q.userById.get(id); if (u) o[id] = { name: u.name }; }
     return send(res, 200, o);
   }
   if (p === '/api/col' && M === 'GET') {
     const col = checkPath(url.searchParams.get('path'), false);
+    if (semDono(me, col)) return send(res, 200, store.list(col).filter(r => r.id === me.id));
     if (!canRead(me, col)) throw err(403, 'not_granted', 'Sem acesso.');
-    return send(res, 200, store.list(col));
+    return send(res, 200, store.list(col).map(r => ({ id: r.id, data: filtrar(me, col, r.data) })));
   }
   if (p === '/api/doc' && M === 'GET') {
     const [col, id] = checkPath(url.searchParams.get('path'), true);
-    return send(res, 200, { data: canRead(me, col) ? store.get(col, id) : null });
+    return send(res, 200, { data: canRead(me, col, id) ? filtrar(me, col, store.get(col, id)) : null });
   }
   if (p === '/api/doc' && M === 'POST') {
     const b = await body(req); const [col, id] = checkPath(b.path, true);
-    if (!canWrite(me, col, id)) throw err(400, 'invalid_argument', 'Você não tem permissão para gravar aqui.');
+    if (!canWrite(me, col, id, b.op, b.data)) throw err(403, 'not_granted', 'Seu perfil não pode fazer esta alteração.');
     if (b.op === 'delete') { store.del(col, id); return send(res, 200, { ok: true }); }
     if (!b.data || typeof b.data !== 'object' || Array.isArray(b.data)) throw err(400, 'invalid_argument', 'Dados inválidos.');
     if (JSON.stringify(b.data).length > 262144) throw err(400, 'invalid_argument', 'Registro grande demais.');
     const data = b.op === 'update' ? store.update(col, id, b.data) : store.set(col, id, b.data);
-    return send(res, 200, { data });
+    return send(res, 200, { data: filtrar(me, col, data) });
   }
   if (p === '/api/lease' && M === 'POST') {
+    if (!papel) throw err(403, 'not_granted', 'Sem acesso.');
     const b = await body(req); checkPath(b.path, true);
     const now = Date.now(), ttl = Math.min(600000, Math.max(1000, Number(b.ttlMs) || 30000)), cur = leases.get(b.path);
     if (cur && cur.exp > now && cur.holder !== b.holder) return send(res, 200, { acquired: false, expiresAt: new Date(cur.exp).toISOString() });
@@ -217,6 +261,36 @@ async function api(req, res, url) {
     const s = { res, user: me }; streams.add(s);
     req.on('close', () => streams.delete(s));
     return;
+  }
+  // ---------- contas criadas pela gestão ----------
+  if (p.startsWith('/api/contas')) {
+    if (papel !== 'gestao') throw err(403, 'not_granted', 'Somente a gestão cuida das contas da equipe.');
+    if (p === '/api/contas' && M === 'GET') {
+      const dono = kv.get('owner');
+      return send(res, 200, sql.prepare('SELECT id, email, name, created FROM users').all().map(u => ({ ...u, dono: u.id === dono })));
+    }
+    const b = await body(req);
+    if (p === '/api/contas/criar' && M === 'POST') {
+      const email = String(b.email || '').trim().toLowerCase(), name = String(b.name || '').trim();
+      if (!/^\S+@\S+\.\S+$/.test(email)) throw err(400, 'invalid_argument', 'Informe um e-mail válido.');
+      if (name.length < 2) throw err(400, 'invalid_argument', 'Informe o nome do funcionário.');
+      if (!['gestao', 'vendedor', 'estoque'].includes(b.papel)) throw err(400, 'invalid_argument', 'Escolha o perfil de acesso.');
+      if (Q.userByEmail.get(email)) throw err(400, 'invalid_argument', 'Já existe uma conta com este e-mail.');
+      const senha = String(b.password || '') || novaSenha();
+      if (senha.length < 8) throw err(400, 'invalid_argument', 'A senha precisa ter pelo menos 8 caracteres.');
+      const id = 'u_' + rid(22);
+      Q.userIns.run(id, email, name, hashPass(senha), Date.now());
+      store.set('equipe', id, { papel: b.papel, cargo: String(b.cargo || '').trim().slice(0, 80), telefone: String(b.telefone || '').trim().slice(0, 40), em: Date.now(), por: me.id });
+      return send(res, 200, { id, email, senha });
+    }
+    if (p === '/api/contas/senha' && M === 'POST') {
+      const u = Q.userById.get(String(b.id || '')); if (!u) throw err(400, 'invalid_argument', 'Conta não encontrada.');
+      if (kv.get('owner') === u.id && u.id !== me.id) throw err(403, 'not_granted', 'A senha do dono só pode ser trocada por ele mesmo ou pelo servidor.');
+      const senha = String(b.password || '') || novaSenha();
+      if (senha.length < 8) throw err(400, 'invalid_argument', 'A senha precisa ter pelo menos 8 caracteres.');
+      Q.userPass.run(hashPass(senha), u.email); falhas.delete(u.email);
+      return send(res, 200, { email: u.email, senha });
+    }
   }
   if (p === '/api/ai' && M === 'POST') {
     if (!papel) throw err(403, 'not_granted', 'Sem acesso.');
@@ -270,5 +344,6 @@ if (args[0] === '--importar') {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Draven CRM rodando em http://localhost:${PORT}`);
+  if (!kv.get('owner')) console.log(OWNER_EMAIL ? `Aguardando o primeiro acesso de ${OWNER_EMAIL}, que será o dono do sistema.` : 'ATENÇÃO: nenhum dono cadastrado e OWNER_EMAIL vazio. A primeira conta criada vira a dona do sistema. Defina OWNER_EMAIL no .env antes de deixar o endereço público.');
   wa.boot();
 });
