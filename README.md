@@ -130,8 +130,7 @@ Isso liga quatro recursos: o "Escrever com IA" nas campanhas, a análise dos com
 ```
 server.mjs        servidor: login, banco, tempo real, rotas
 whatsapp.mjs      conexão por QR Code, classificação dos contatos e envio de mensagens
-public/index.html interface do CRM
+public/index.html tela de entrada e interface do CRM (um só arquivo)
 public/shim.js    ponte entre a interface e o servidor
-public/login.html tela de entrada
 data/             banco e sessões (criada automaticamente, faça backup)
 ```
