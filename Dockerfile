@@ -6,6 +6,5 @@ COPY package.json ./
 RUN npm install --omit=dev
 COPY . .
 ENV NODE_ENV=production DATA_DIR=/app/data PORT=3000
-VOLUME ["/app/data"]
 EXPOSE 3000
 CMD ["node", "--disable-warning=ExperimentalWarning", "server.mjs"]
