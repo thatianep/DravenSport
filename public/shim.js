@@ -5,7 +5,7 @@
     const r = await fetch(url, { credentials: 'same-origin', method: opt.method || 'GET', headers: opt.body ? { 'content-type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
-      if (r.status === 401 && !url.startsWith('/api/auth')) { location.href = '/login.html'; }
+      if (r.status === 401 && !url.startsWith('/api/auth')) { location.href = '/'; }
       throw { code: j.code || 'unavailable', message: j.message || 'Não foi possível concluir. Tente de novo.' };
     }
     return j;

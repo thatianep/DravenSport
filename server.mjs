@@ -337,10 +337,9 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://local');
   try {
     if (url.pathname.startsWith('/api/')) return await api(req, res, url);
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      if (!session(req)) { res.writeHead(302, { location: '/login.html' }); return res.end(); }
-      return file(res, 'index.html');
-    }
+    // login e sistema ficam no mesmo arquivo: a própria página decide o que mostrar
+    if (url.pathname === '/' || url.pathname === '/index.html') return file(res, 'index.html');
+    if (url.pathname === '/login.html') { res.writeHead(302, { location: '/' + url.search }); return res.end(); }
     return file(res, url.pathname.slice(1));
   } catch (e) {
     const st = e.status || 500; if (st === 500) console.error(e);
