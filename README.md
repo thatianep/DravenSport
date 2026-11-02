@@ -119,8 +119,6 @@ Isso liga quatro recursos: o "Escrever com IA" nas campanhas, a análise dos com
 ## 5. Backup e manutenção
 
 - **Backup:** copie a pasta `data` inteira. Ela contém o banco (`draven.db`) e as sessões do WhatsApp (`wa/`).
-- **Trocar a própria senha ou o nome:** clique no seu nome no canto superior direito, em **Minha conta** ou **Trocar minha senha**.
-- **Trocar de usuário no mesmo computador:** clique no seu nome e depois em **Trocar de usuário**. A tela de entrada mostra as contas já usadas naquele aparelho.
 - **Esqueceu a senha:** a gestão gera uma nova em **Equipe e permissões**, no botão **Nova senha**. Se for a senha do dono, rode no servidor `node server.mjs --senha email@empresa.com NovaSenha123` e reinicie o sistema.
 - **Importar dados:** rode `node server.mjs --importar arquivo.json`. O arquivo segue o formato `{ "clientes": [ { "id": "...", "data": { ... } } ], ... }`.
 - **Teste sem celular:** `npm run teste` liga um WhatsApp simulado, só para conferir as telas.

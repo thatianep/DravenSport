@@ -45,7 +45,6 @@ const Q = {
   userCount: sql.prepare('SELECT COUNT(*) AS n FROM users'),
   userIns: sql.prepare('INSERT INTO users(id,email,name,pass,created) VALUES(?,?,?,?,?)'),
   userPass: sql.prepare('UPDATE users SET pass=? WHERE email=?'),
-  userName: sql.prepare('UPDATE users SET name=? WHERE id=?'),
 };
 const kv = { get: k => Q.kvGet.get(k)?.v ?? null, set: (k, v) => Q.kvSet.run(k, v) };
 
@@ -224,25 +223,6 @@ async function api(req, res, url) {
   const papel = role(me);
 
   if (p === '/api/me') return send(res, 200, { ...me, papel, ai: !!AI_KEY });
-  // ---------- minha conta ----------
-  if (p === '/api/conta/nome' && M === 'POST') {
-    const b = await body(req); const name = String(b.name || '').trim();
-    if (name.length < 2 || name.length > 80) throw err(400, 'invalid_argument', 'Informe um nome entre 2 e 80 caracteres.');
-    Q.userName.run(name, me.id);
-    return send(res, 200, { ok: true, name });
-  }
-  if (p === '/api/conta/senha' && M === 'POST') {
-    rateLimit(req);
-    const b = await body(req); const u = Q.userById.get(me.id);
-    if (!checkPass(String(b.atual || ''), u.pass)) throw err(400, 'invalid_argument', 'A senha atual está incorreta.');
-    const nova = String(b.nova || '');
-    if (nova.length < 8) throw err(400, 'invalid_argument', 'A nova senha precisa ter pelo menos 8 caracteres.');
-    if (nova === String(b.atual)) throw err(400, 'invalid_argument', 'A nova senha precisa ser diferente da atual.');
-    const h = hashPass(nova); Q.userPass.run(h, u.email);
-    // a assinatura do login inclui a senha: os outros aparelhos saem e este continua conectado
-    setCookie(req, res, sign({ id: u.id, pass: h }), 30 * 86400);
-    return send(res, 200, { ok: true });
-  }
   if (p === '/api/users') {
     const ids = String(url.searchParams.get('ids') || '').split(',').filter(Boolean).filter(i => papel || i === me.id).slice(0, 200); const o = {};
     for (const id of ids) { const u = Q.userById.get(id); if (u) o[id] = { name: u.name }; }
