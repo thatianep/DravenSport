@@ -7,6 +7,12 @@
 - **Aba Conversas:** a equipe responde pelo próprio CRM e cada mensagem fica guardada com o cliente.
 - **Login da equipe** com os perfis Gestão, Vendas e Estoque. A gestão pode criar as contas dos funcionários e gerar senhas novas.
 - **Permissões conferidas no servidor:** cada perfil só lê e grava o que a tela dele permite, mesmo em chamadas diretas ao sistema.
+- **Loja virtual na raiz do endereço (`/`)** e CRM em **`/crm`**. O carrinho vira orçamento em Vendas e tarefa no Kanban. O formulário de atacado vira lead. O servidor recalcula sempre o preço de atacado ou varejo.
+- **Tarefas (Kanban)** com as colunas A fazer, Em andamento, Em revisão e Concluído. Dá para arrastar os cartões, filtrar por responsável, prioridade e prazo.
+- **Equipe comercial:** organograma (gestão → times → líder → vendedores), metas mensais, vendas do mês por vendedor, carteira de clientes, redistribuição de carteira e rodízio dos leads do site.
+- **Cargos:** Administrativo, Comercial e Operacional (perfil Gestão) e Representante comercial (perfil Vendas) já vêm criados. O cargo define o perfil de acesso.
+- **Clientes Atacado ou Varejo:** CNPJ, academia, equipe, escolinha, loja e distribuidor são Atacado; atleta e pessoa física são Varejo. A classificação é obrigatória no cadastro manual e automática nos pedidos do site.
+- **Senha provisória:** contas criadas pela gestão entram com senha provisória, e o sistema pede uma senha nova no primeiro acesso.
 
 ---
 
@@ -30,7 +36,7 @@ cp .env.example .env        # preencha OWNER_EMAIL com o seu e-mail
 docker compose up -d --build
 ```
 
-Depois, acesse `http://IP-DO-SERVIDOR:3000`. Para usar com domínio próprio e cadeado (https), coloque na frente um proxy como Caddy ou Nginx, ou use o Cloudflare Tunnel.
+Depois, acesse `http://IP-DO-SERVIDOR:3000` para a loja e `http://IP-DO-SERVIDOR:3000/crm` para o sistema da equipe. Para usar com domínio próprio e cadeado (https), coloque na frente um proxy como Caddy ou Nginx, ou use o Cloudflare Tunnel.
 
 ### Opção B: Railway ou Render
 
@@ -130,8 +136,7 @@ Isso liga quatro recursos: o "Escrever com IA" nas campanhas, a análise dos com
 ```
 server.mjs        servidor: login, banco, tempo real, rotas
 whatsapp.mjs      conexão por QR Code, classificação dos contatos e envio de mensagens
-public/index.html interface do CRM
+public/index.html tela de entrada e interface do CRM (um só arquivo)
 public/shim.js    ponte entre a interface e o servidor
-public/login.html tela de entrada
 data/             banco e sessões (criada automaticamente, faça backup)
 ```

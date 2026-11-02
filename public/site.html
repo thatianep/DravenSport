@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Draven Sports · Loja</title>
+<meta name="description" content="Luvas de luta, luvas de goleiro, kimonos e acessórios Draven Sports. Varejo e atacado para academias, equipes e lojas.">
+<link rel="icon" href="/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box}html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+:root{
+  color-scheme:light;
+  --bg:#F6F5F1;--surface:#FFFFFF;--surface-2:#FAFAF8;--line:#E5E3DD;--fg:#18181B;--muted:#71717A;--ink:#09090B;
+  --accent:#D4AF37;--accent-2:#CA8A04;--accent-soft:#FBF3D9;--accent-text:#8A6A00;--red:#DC2626;--ok:#15803D;--ok-soft:#DCFCE7;--info:#1E3A8A;--info-soft:#DBEAFE;
+  --f-display:"Oswald","Arial Narrow",Arial,sans-serif;--f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--r:16px;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+.aviso{background:var(--ink);color:#fff;font-size:12.5px;text-align:center;padding:8px 16px;letter-spacing:.02em}
+.aviso b{color:var(--accent)}
+header{background:rgba(255,255,255,.97);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;backdrop-filter:blur(6px)}
+.hd{display:flex;align-items:center;gap:14px;height:68px}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo img{width:44px;height:44px;border-radius:10px;object-fit:contain}
+.logo b{font-family:var(--f-display);font-size:22px;letter-spacing:.04em;text-transform:uppercase}
+.hd nav{display:flex;gap:18px;margin-left:auto}
+.hd nav a{text-decoration:none;font-weight:600;font-size:14px;color:var(--muted)}
+.hd nav a:hover{color:var(--fg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer;text-decoration:none;font-size:14px}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.pri:hover{background:#27272A}
+.btn.gold{background:var(--accent);border-color:var(--accent);color:#000}
+.btn.sm{padding:6px 12px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.cart-b{position:relative}
+.cart-b .n{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;padding:0 5px}
+.hero{background:var(--ink);color:#fff;border-radius:24px;margin:22px 0;padding:44px 40px;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:center;overflow:hidden}
+.hero h1{font-family:var(--f-display);text-transform:uppercase;font-size:clamp(32px,5vw,54px);line-height:1;margin:0 0 14px;letter-spacing:.01em}
+.hero h1 span{color:var(--accent)}
+.hero p{color:#D4D4D8;margin:0 0 22px;max-width:52ch}
+.hero .cta{display:flex;gap:10px;flex-wrap:wrap}
+.hero .cta .btn{border-color:#3F3F46;background:transparent;color:#fff}
+.hero .cta .btn.gold{background:var(--accent);color:#000;border-color:var(--accent)}
+.hero-img{justify-self:center;background:#fff;border-radius:24px;padding:18px;width:min(260px,100%)}
+.selos{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.selo{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;gap:12px;align-items:center;font-size:13.5px}
+.selo i{color:var(--accent-2);font-size:20px}
+.selo b{display:block}
+h2.sec{font-family:var(--f-display);text-transform:uppercase;font-size:28px;letter-spacing:.02em;margin:0}
+.bar{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 14px}
+.modo{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
+.modo button{border:0;background:transparent;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13.5px}
+.modo button[aria-pressed=true]{background:var(--ink);color:#fff}
+.cats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cats button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-weight:600;cursor:pointer;font-size:13px}
+.cats button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text)}
+.dica{font-size:13px;color:var(--muted);margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.prod{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.prod .img{aspect-ratio:4/3;background:linear-gradient(135deg,#18181B,#3F3F46);display:grid;place-items:center;color:var(--accent);font-size:44px;position:relative}
+.prod .img img{width:100%;height:100%;object-fit:cover}
+.prod .tag{position:absolute;top:10px;left:10px;background:#fff;color:var(--fg);font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px}
+.prod .tag.off{background:var(--red);color:#fff}
+.prod .b{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.prod .cat{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.prod h3{margin:0;font-size:15.5px;line-height:1.3}
+.prod .var{font-size:13px;color:var(--muted)}
+.prod .desc{font-size:12.5px;color:var(--muted)}
+.preco{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:auto}
+.preco b{font-family:var(--f-display);font-size:24px;letter-spacing:.01em}
+.preco s{color:var(--muted);font-size:13px}
+.preco small{font-size:12px;color:var(--accent-text);font-weight:600;width:100%}
+.prod .add{display:flex;gap:8px;align-items:center}
+.qtd{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.qtd button{border:0;background:transparent;width:32px;height:34px;cursor:pointer;font-weight:700}
+.qtd input{width:46px;border:0;text-align:center;height:34px;background:transparent;-moz-appearance:textfield}
+.qtd input::-webkit-outer-spin-button,.qtd input::-webkit-inner-spin-button{-webkit-appearance:none}
+.prod .add .btn{flex:1}
+.vazio{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:36px;text-align:center;color:var(--muted)}
+.atac{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:32px;margin:34px 0;display:grid;grid-template-columns:1fr 1.2fr;gap:28px}
+.atac ul{padding-left:18px;margin:12px 0;color:var(--muted)}
+.atac li{margin:4px 0}
+form .fg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
+.f.full{grid-column:1/-1}
+.inp{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);width:100%;font-weight:400}
+.inp:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:500}
+.err{color:var(--red);font-size:13px;margin:0}
+.ok-box{background:var(--ok-soft);color:var(--ok);border-radius:12px;padding:14px;font-weight:600}
+footer{background:var(--ink);color:#A1A1AA;margin-top:40px;padding:32px 0;font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:#fff}
+dialog{border:0;border-radius:20px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-shadow:0 30px 80px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(9,9,11,.55)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.dh h2{font-family:var(--f-display);text-transform:uppercase;margin:0;font-size:22px}
+.db{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.ci{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.ci .t{font-weight:600;font-size:14px}
+.ci .d{font-size:12.5px;color:var(--muted)}
+.ci .v{font-weight:700;text-align:right;min-width:86px}
+.tot{display:flex;justify-content:space-between;align-items:baseline;font-size:15px}
+.tot b{font-family:var(--f-display);font-size:26px}
+.nota{background:var(--accent-soft);color:var(--accent-text);border-radius:12px;padding:10px 12px;font-size:13px}
+.x{border:0;background:transparent;font-size:20px;cursor:pointer;color:var(--muted)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-weight:600;z-index:50;font-size:14px}
+@media(max-width:860px){
+  .hero{grid-template-columns:1fr;padding:30px 22px}.hero-img{display:none}
+  .selos{grid-template-columns:1fr 1fr}
+  .atac{grid-template-columns:1fr;padding:22px}
+  .hd nav{display:none}
+}
+@media(max-width:520px){
+  form .fg{grid-template-columns:1fr}
+  .selos{grid-template-columns:1fr}
+  .logo b{font-size:18px}
+  .hd .equipe span{display:none}
+}
+</style>
+</head>
+<body>
+<div class="aviso">Atacado para academias, equipes e lojas com <b>preço especial a partir da quantidade mínima</b> · Atendimento pelo WhatsApp</div>
+<header><div class="wrap hd">
+  <a class="logo" href="/"><img src="/logo.jpg" alt=""><b>Draven Sports</b></a>
+  <nav><a href="#produtos">Produtos</a><a href="#atacado">Atacado</a><a href="#contato">Contato</a></nav>
+  <a class="btn sm equipe" href="/crm" title="Área da equipe"><i class="fa-solid fa-user-lock"></i><span>Área da equipe</span></a>
+  <button class="btn pri cart-b" id="abrirCarrinho" type="button" aria-label="Abrir carrinho"><i class="fa-solid fa-bag-shopping"></i><span class="n" id="nCarrinho" hidden>0</span></button>
+</div></header>
+
+<main class="wrap">
+  <section class="hero">
+    <div><h1>Equipamento de <span>luta</span> e de <span>goleiro</span> feito para treinar pesado</h1>
+      <p>Luvas, kimonos, protetores e acessórios Draven Sports. Compre no varejo ou abasteça sua academia, equipe ou loja com preço de atacado.</p>
+      <div class="cta"><a class="btn gold" href="#produtos">Ver produtos</a><a class="btn" href="#atacado">Quero comprar no atacado</a></div></div>
+    <img class="hero-img" src="/logo.jpg" alt="Draven Sports">
+  </section>
+  <div class="selos">
+    <div class="selo"><i class="fa-solid fa-truck-fast"></i><div><b>Envio para todo o Brasil</b>Frete combinado no WhatsApp</div></div>
+    <div class="selo"><i class="fa-solid fa-building"></i><div><b>Atacado com CNPJ</b>Academias, equipes e lojas</div></div>
+    <div class="selo"><i class="fa-solid fa-pen-ruler"></i><div><b>Marca própria</b>Logo da sua academia</div></div>
+    <div class="selo"><i class="fa-brands fa-whatsapp"></i><div><b>Atendimento humano</b>Um vendedor cuida do seu pedido</div></div>
+  </div>
+
+  <section id="produtos">
+    <div class="bar"><h2 class="sec">Produtos</h2>
+      <div class="modo" role="group" aria-label="Tipo de compra"><button type="button" data-modo="Varejo" aria-pressed="true">Varejo</button><button type="button" data-modo="Atacado" aria-pressed="false">Atacado (CNPJ)</button></div></div>
+    <p class="dica" id="dica"></p>
+    <div class="cats" id="cats"></div>
+    <div class="grid" id="grid"><div class="vazio">Carregando produtos…</div></div>
+  </section>
+
+  <section class="atac" id="atacado">
+    <div><h2 class="sec">Compre no atacado</h2>
+      <p>Para academias, equipes, escolinhas, lojas e distribuidores. Um vendedor da Draven entra em contato para montar a grade de tamanhos e o orçamento.</p>
+      <ul><li>Preço de atacado a partir da quantidade mínima de cada produto</li><li>Personalização com a marca da sua academia ou equipe</li><li>Faturamento para CNPJ</li><li>Reposição programada</li></ul></div>
+    <form id="fAtac" novalidate>
+      <div class="fg">
+        <label class="f full">Nome da empresa, academia ou equipe *<input class="inp" name="nome" required maxlength="120"></label>
+        <label class="f">Pessoa de contato<input class="inp" name="contato" maxlength="80"></label>
+        <label class="f">Tipo *<select class="inp" name="tipo" required><option>Academia</option><option>Equipe/Time</option><option>Escolinha de futebol</option><option selected>Loja</option><option>Distribuidor</option></select></label>
+        <label class="f">WhatsApp com DDD *<input class="inp" name="telefone" required inputmode="tel" placeholder="(11) 90000-0000"></label>
+        <label class="f">E-mail<input class="inp" name="email" type="email"></label>
+        <label class="f">CNPJ<input class="inp" name="documento" inputmode="numeric"></label>
+        <label class="f">Cidade / UF<input class="inp" name="cidade"></label>
+        <label class="f full">O que você precisa?<input class="inp" name="interesse" placeholder="Luvas 14oz, kimonos A2, luvas de goleiro sub-15…"></label>
+        <label class="f full">Volume aproximado por mês<input class="inp" name="quantidade" placeholder="Ex.: 40 pares"></label>
+        <label class="chk full"><input type="checkbox" name="consentWhats" checked> Aceito receber contato e ofertas da Draven Sports pelo WhatsApp</label>
+      </div>
+      <p class="err" id="eAtac" hidden></p>
+      <div class="ok-box" id="okAtac" hidden></div>
+      <p style="margin:14px 0 0"><button class="btn pri" type="submit">Quero ser atendido no atacado</button></p>
+    </form>
+  </section>
+</main>
+
+<footer id="contato"><div class="wrap">
+  <div><b style="color:#fff;font-family:var(--f-display);text-transform:uppercase;font-size:18px;letter-spacing:.04em">Draven Sports</b><br>Equipamentos para luta e futebol · Varejo e atacado</div>
+  <div>Pedidos feitos aqui são confirmados por um vendedor no WhatsApp, com frete e prazo.<br><a href="/crm">Área da equipe</a></div>
+</div></footer>
+
+<dialog id="dCarrinho"><form method="dialog" id="fCarrinho" novalidate>
+  <div class="dh"><h2>Seu carrinho</h2><button class="x" type="button" data-fechar aria-label="Fechar">✕</button></div>
+  <div class="db" id="carrinhoCorpo"></div>
+</form></dialog>
+<div id="toast" hidden></div>
+
+<script>
+const $=(s,el=document)=>el.querySelector(s),$$=(s,el=document)=>[...el.querySelectorAll(s)];
+const brl=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});const money=v=>brl.format(Number(v)||0);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ler=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const gravar=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const ICON={'Luvas de luta':'fa-hand-fist','Luvas de goleiro':'fa-futbol','Kimonos e faixas':'fa-user-ninja','Protetores':'fa-shield-halved','Vestuário':'fa-shirt','Acessórios':'fa-tape'};
+let PRODS=[],CAT='',MODO=ler('dv-modo','Varejo'),CART=ler('dv-carrinho',{});
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+// mesma regra do servidor; o valor final é sempre recalculado lá
+function preco(p,q){return MODO==='Atacado'&&p.precoAtacado>0&&q>=(p.minimoAtacado||1)?p.precoAtacado:p.preco}
+
+async function carregar(){
+  try{const r=await fetch('/api/loja/produtos');PRODS=await r.json();if(!Array.isArray(PRODS))PRODS=[]}catch{PRODS=[]}
+  for(const id of Object.keys(CART))if(!PRODS.some(p=>p.id===id))delete CART[id];
+  desenhar();contar();
+}
+function desenhar(){
+  $$('[data-modo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.modo===MODO));
+  $('#dica').textContent=MODO==='Atacado'?'Preços de atacado valem para CNPJ, academias, equipes, escolinhas, lojas e distribuidores, a partir da quantidade mínima de cada produto.':'Preços para atletas e pessoa física. Tem CNPJ ou academia? Troque para Atacado.';
+  const cats=[...new Set(PRODS.map(p=>p.categoria))];
+  $('#cats').innerHTML=cats.length>1?['',...cats].map(c=>`<button type="button" data-cat="${esc(c)}" aria-pressed="${c===CAT}">${esc(c||'Todos')}</button>`).join(''):'';
+  const l=PRODS.filter(p=>!CAT||p.categoria===CAT);
+  $('#grid').innerHTML=l.length?l.map(p=>{const at=MODO==='Atacado'&&p.precoAtacado>0&&p.precoAtacado<p.preco;const min=p.minimoAtacado||1;
+    return`<article class="prod"><div class="img">${p.imagem?`<img src="${esc(p.imagem)}" alt="">`:`<i class="fa-solid ${ICON[p.categoria]||'fa-dumbbell'}"></i>`}${p.disponivel?'':'<span class="tag off">Sob encomenda</span>'}${at?'<span class="tag" style="left:auto;right:10px">Atacado</span>':''}</div>
+    <div class="b"><span class="cat">${esc(p.categoria)}</span><h3>${esc(p.nome)}</h3>${p.variacao?`<span class="var">${esc(p.variacao)}</span>`:''}${p.descricao?`<span class="desc">${esc(p.descricao)}</span>`:''}
+     <div class="preco">${at?`<b>${money(p.precoAtacado)}</b><s>${money(p.preco)}</s><small>a partir de ${min} ${esc(p.unidade)}</small>`:`<b>${money(p.preco)}</b>${MODO==='Varejo'&&p.precoAtacado>0&&p.precoAtacado<p.preco?`<small>Atacado: ${money(p.precoAtacado)} a partir de ${min}</small>`:''}`}</div>
+     <div class="add"><span class="qtd"><button type="button" data-menos aria-label="Diminuir">−</button><input type="number" min="1" value="${at?min:1}" aria-label="Quantidade" id="q-${p.id}"><button type="button" data-mais aria-label="Aumentar">+</button></span><button class="btn gold" type="button" data-add="${p.id}">Adicionar</button></div>
+    </div></article>`}).join(''):'<div class="vazio">Nenhum produto disponível no momento. Fale com a gente pelo formulário de atacado.</div>';
+}
+function contar(){const n=Object.values(CART).reduce((s,q)=>s+q,0);$('#nCarrinho').textContent=n;$('#nCarrinho').hidden=!n;gravar('dv-carrinho',CART)}
+function itensCarrinho(){return Object.entries(CART).map(([id,q])=>({p:PRODS.find(p=>p.id===id),q})).filter(x=>x.p)}
+function desenharCarrinho(){
+  const it=itensCarrinho();const tot=it.reduce((s,x)=>s+preco(x.p,x.q)*x.q,0);
+  const ped=ler('dv-dados',{});
+  $('#carrinhoCorpo').innerHTML=!it.length?'<p class="vazio" style="margin:0">Seu carrinho está vazio.</p>':`
+   <div>${it.map(({p,q})=>`<div class="ci"><div><div class="t">${esc(p.nome)}${p.variacao?' · '+esc(p.variacao):''}</div><div class="d">${money(preco(p,q))} cada${MODO==='Atacado'&&p.precoAtacado>0&&q<(p.minimoAtacado||1)?` · atacado a partir de ${p.minimoAtacado}`:''}</div></div>
+     <span class="qtd"><button type="button" data-cq="${p.id}" data-d="-1" aria-label="Diminuir">−</button><input type="number" min="0" value="${q}" data-cset="${p.id}" aria-label="Quantidade"><button type="button" data-cq="${p.id}" data-d="1" aria-label="Aumentar">+</button></span><span class="v">${money(preco(p,q)*q)}</span></div>`).join('')}</div>
+   <div class="tot"><span>Total estimado (${MODO})</span><b>${money(tot)}</b></div>
+   <div class="nota">O preço final é conferido pela Draven conforme o seu cadastro (Atacado ou Varejo). Frete e prazo são combinados pelo WhatsApp.</div>
+   <div class="fg">
+    <label class="f full">Nome completo ou empresa *<input class="inp" name="nome" required value="${esc(ped.nome||'')}"></label>
+    <label class="f">WhatsApp com DDD *<input class="inp" name="telefone" required inputmode="tel" value="${esc(ped.telefone||'')}"></label>
+    <label class="f">E-mail<input class="inp" name="email" type="email" value="${esc(ped.email||'')}"></label>
+    <label class="f">Você é *<select class="inp" name="tipo">${['Pessoa física','Atleta','Academia','Equipe/Time','Escolinha de futebol','Loja','Distribuidor'].map(t=>`<option ${(ped.tipo||(MODO==='Atacado'?'Academia':'Pessoa física'))===t?'selected':''}>${t}</option>`).join('')}</select></label>
+    <label class="f">CPF ou CNPJ<input class="inp" name="documento" inputmode="numeric" value="${esc(ped.documento||'')}"></label>
+    <label class="f">Cidade / UF<input class="inp" name="cidade" value="${esc(ped.cidade||'')}"></label>
+    <label class="f">Pagamento<select class="inp" name="pagamento"><option>Pix</option><option>Boleto</option><option>Cartão de crédito</option></select></label>
+    <label class="f full">Observação<input class="inp" name="obs" placeholder="Tamanhos, cores, personalização…"></label>
+    <label class="chk full"><input type="checkbox" name="consentWhats" checked> Aceito receber o pedido e ofertas pelo WhatsApp</label>
+   </div>
+   <p class="err" id="eCarrinho" hidden></p>
+   <button class="btn pri" type="submit" id="bEnviar">Enviar pedido</button>`;
+}
+function abrirCarrinho(){desenharCarrinho();const d=$('#dCarrinho');if(!d.open)d.showModal()}
+
+document.addEventListener('click',e=>{
+  const m=e.target.closest('[data-modo]');if(m){MODO=m.dataset.modo;gravar('dv-modo',MODO);desenhar();return}
+  const c=e.target.closest('[data-cat]');if(c){CAT=c.dataset.cat;desenhar();return}
+  const q=e.target.closest('[data-menos],[data-mais]');if(q){const i=$('input',q.parentElement);i.value=Math.max(1,(Number(i.value)||1)+(q.hasAttribute('data-mais')?1:-1));return}
+  const a=e.target.closest('[data-add]');if(a){const id=a.dataset.add;const n=Math.max(1,Math.floor(Number($('#q-'+id).value)||1));CART[id]=(CART[id]||0)+n;contar();toast('Adicionado ao carrinho');return}
+  const cq=e.target.closest('[data-cq]');if(cq){const id=cq.dataset.cq;CART[id]=Math.max(0,(CART[id]||0)+Number(cq.dataset.d));if(!CART[id])delete CART[id];contar();guardarDados();desenharCarrinho();return}
+  if(e.target.closest('#abrirCarrinho')){abrirCarrinho();return}
+  if(e.target.closest('[data-fechar]')){guardarDados();$('#dCarrinho').close();return}
+});
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset.cset){const n=Math.max(0,Math.floor(Number(t.value)||0));if(n)CART[t.dataset.cset]=n;else delete CART[t.dataset.cset];contar();guardarDados();desenharCarrinho()}});
+function guardarDados(){const f=$('#fCarrinho');if(!f.elements.nome)return;const o={};['nome','telefone','email','tipo','documento','cidade'].forEach(k=>o[k]=f.elements[k]?.value||'');gravar('dv-dados',o)}
+
+$('#fCarrinho').addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.target;const er=$('#eCarrinho');er.hidden=true;guardarDados();
+  const v=k=>f.elements[k]?.value||'';
+  if(v('nome').trim().length<2||v('telefone').replace(/\D/g,'').length<10){er.textContent='Preencha o nome e o WhatsApp com DDD.';er.hidden=false;return}
+  const b=$('#bEnviar');b.disabled=true;b.textContent='Enviando…';
+  try{
+    const r=await fetch('/api/loja/pedido',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
+      itens:itensCarrinho().map(x=>({produtoId:x.p.id,qtd:x.q})),pagamento:v('pagamento'),obs:v('obs'),
+      cliente:{nome:v('nome'),telefone:v('telefone'),email:v('email'),tipo:v('tipo'),documento:v('documento'),cidade:v('cidade'),consentWhats:f.elements.consentWhats?.checked}})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||'Não foi possível enviar o pedido.');
+    CART={};contar();
+    $('#carrinhoCorpo').innerHTML=`<div class="ok-box">Pedido ${esc(j.numero)} recebido!</div>
+     <p style="margin:0">Total ${money(j.total)} com preço de <b>${esc(j.classificacao)}</b>. Um vendedor da Draven vai chamar você no WhatsApp para confirmar frete, prazo e pagamento.</p>
+     <button class="btn pri" type="button" data-fechar>Continuar comprando</button>`;
+  }catch(err){er.textContent=err.message;er.hidden=false;b.disabled=false;b.textContent='Enviar pedido'}
+});
+$('#fAtac').addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.target;const er=$('#eAtac'),ok=$('#okAtac');er.hidden=true;ok.hidden=true;
+  const d=Object.fromEntries(new FormData(f));d.consentWhats=!!f.elements.consentWhats.checked;
+  if(String(d.nome||'').trim().length<2||String(d.telefone||'').replace(/\D/g,'').length<10){er.textContent='Preencha o nome e o WhatsApp com DDD.';er.hidden=false;return}
+  const b=$('button[type=submit]',f);b.disabled=true;
+  try{const r=await fetch('/api/loja/atacado',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d)});const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.message||'Não foi possível enviar.');
+    f.reset();ok.textContent='Recebemos seus dados! Um vendedor de atacado vai chamar você no WhatsApp em breve.';ok.hidden=false}
+  catch(err){er.textContent=err.message;er.hidden=false}finally{b.disabled=false}
+});
+carregar();
+</script>
+</body>
+</html>

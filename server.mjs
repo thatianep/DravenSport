@@ -77,6 +77,34 @@ export const store = {
 };
 export const rid = (n = 20) => { const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; return [...crypto.randomBytes(n)].map(x => c[x % 62]).join(''); };
 
+// ---------- regras comerciais ----------
+// Atacado: CNPJ ou cliente empresa (academia, equipe, escolinha, loja, distribuidor). Varejo: atleta e pessoa física.
+const TIPOS_ATACADO = ['Academia', 'Equipe/Time', 'Escolinha de futebol', 'Loja', 'Distribuidor'];
+export function classificar({ documento, tipo } = {}) {
+  if (String(documento || '').replace(/\D/g, '').length === 14) return 'Atacado';
+  return TIPOS_ATACADO.includes(tipo) ? 'Atacado' : 'Varejo';
+}
+// preço de atacado só vale para cliente Atacado e a partir da quantidade mínima do produto
+export function precoItem(p, qtd, classificacao) {
+  const atac = Number(p.precoAtacado) || 0;
+  if (classificacao === 'Atacado' && atac > 0 && qtd >= (Number(p.minimoAtacado) || 1)) return atac;
+  return Number(p.preco) || 0;
+}
+const codigo = pre => { const d = new Date(); return `${pre}-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}-${rid(4).toUpperCase()}`; };
+// rodízio: o próximo vendedor (perfil Vendas, recebendo leads) depois do último que recebeu
+function proximoVendedor() {
+  const ids = store.list('equipe').filter(r => r.data.papel === 'vendedor' && r.data.recebeLeads !== false).map(r => r.id).sort();
+  if (!ids.length) return kv.get('owner');
+  const ult = kv.get('rodizio_ultimo');
+  const prox = ids.find(i => ult && i > ult) || ids[0];
+  kv.set('rodizio_ultimo', prox);
+  return prox;
+}
+const CARGOS_PADRAO = [
+  ['administrativo', 'Administrativo', 'gestao'], ['comercial', 'Comercial', 'gestao'],
+  ['operacional', 'Operacional', 'gestao'], ['representante', 'Representante comercial', 'vendedor'],
+];
+
 // ---------- tempo real ----------
 const streams = new Set();
 function emit(col, id, data) {
@@ -106,10 +134,11 @@ function session(req) {
 }
 function role(u) { if (!u) return null; return u.isOwner ? 'gestao' : (store.get('equipe', u.id)?.papel || null); }
 // Quem lê e quem grava cada coleção. Espelha as permissões da tela, para valerem também em chamadas diretas à API.
-const LER = { producao: ['gestao', 'estoque'], conversas: ['gestao', 'vendedor'], whatsapp: ['gestao', 'vendedor'] };
+const LER = { producao: ['gestao', 'estoque'], conversas: ['gestao', 'vendedor'], whatsapp: ['gestao', 'vendedor'], metas: ['gestao', 'vendedor'] };
 const GRAVAR = {
   clientes: ['gestao', 'vendedor'], vendas: ['gestao', 'vendedor'], campanhas: ['gestao', 'vendedor'], nps: ['gestao', 'vendedor'], conversas: ['gestao', 'vendedor'],
   producao: ['gestao', 'estoque'], produtos: ['gestao', 'estoque'], movimentos: ['gestao', 'vendedor', 'estoque'], whatsapp: ['gestao'], equipe: ['gestao'],
+  tarefas: ['gestao', 'vendedor', 'estoque'], cargos: ['gestao'], times: ['gestao'], metas: ['gestao'],
 };
 // gravações parciais que outros perfis precisam fazer: vendas dão baixa no estoque; o estoque marca a entrega
 const PARCIAL = {
@@ -219,11 +248,13 @@ async function api(req, res, url) {
   }
   if (p === '/api/auth/logout' && M === 'POST') { setCookie(req, res, '', 0); return send(res, 200, { ok: true }); }
 
+  if (p.startsWith('/api/loja/')) return loja(req, res, p, M);
+
   const me = session(req);
   if (!me) throw err(401, 'not_granted', 'Faça login para continuar.');
   const papel = role(me);
 
-  if (p === '/api/me') return send(res, 200, { ...me, papel, ai: !!AI_KEY });
+  if (p === '/api/me') return send(res, 200, { ...me, papel, ai: !!AI_KEY, provisoria: kv.get('prov:' + me.id) === '1' });
   // ---------- minha conta ----------
   if (p === '/api/conta/nome' && M === 'POST') {
     const b = await body(req); const name = String(b.name || '').trim();
@@ -238,7 +269,7 @@ async function api(req, res, url) {
     const nova = String(b.nova || '');
     if (nova.length < 8) throw err(400, 'invalid_argument', 'A nova senha precisa ter pelo menos 8 caracteres.');
     if (nova === String(b.atual)) throw err(400, 'invalid_argument', 'A nova senha precisa ser diferente da atual.');
-    const h = hashPass(nova); Q.userPass.run(h, u.email);
+    const h = hashPass(nova); Q.userPass.run(h, u.email); kv.set('prov:' + u.id, '0');
     // a assinatura do login inclui a senha: os outros aparelhos saem e este continua conectado
     setCookie(req, res, sign({ id: u.id, pass: h }), 30 * 86400);
     return send(res, 200, { ok: true });
@@ -294,13 +325,18 @@ async function api(req, res, url) {
       const email = String(b.email || '').trim().toLowerCase(), name = String(b.name || '').trim();
       if (!/^\S+@\S+\.\S+$/.test(email)) throw err(400, 'invalid_argument', 'Informe um e-mail válido.');
       if (name.length < 2) throw err(400, 'invalid_argument', 'Informe o nome do funcionário.');
-      if (!['gestao', 'vendedor', 'estoque'].includes(b.papel)) throw err(400, 'invalid_argument', 'Escolha o perfil de acesso.');
+      const cargo = b.cargoId ? store.get('cargos', String(b.cargoId)) : null;
+      if (b.cargoId && !cargo) throw err(400, 'invalid_argument', 'Cargo não encontrado.');
+      if (cargo) b.papel = cargo.perfil;
+      if (!['gestao', 'vendedor', 'estoque'].includes(b.papel)) throw err(400, 'invalid_argument', 'Escolha o cargo ou o perfil de acesso.');
+      const timeId = b.timeId && store.get('times', String(b.timeId)) ? String(b.timeId) : null;
       if (Q.userByEmail.get(email)) throw err(400, 'invalid_argument', 'Já existe uma conta com este e-mail.');
       const senha = String(b.password || '') || novaSenha();
       if (senha.length < 8) throw err(400, 'invalid_argument', 'A senha precisa ter pelo menos 8 caracteres.');
       const id = 'u_' + rid(22);
       Q.userIns.run(id, email, name, hashPass(senha), Date.now());
-      store.set('equipe', id, { papel: b.papel, cargo: String(b.cargo || '').trim().slice(0, 80), telefone: String(b.telefone || '').trim().slice(0, 40), em: Date.now(), por: me.id });
+      store.set('equipe', id, { papel: b.papel, cargoId: cargo ? String(b.cargoId) : null, cargo: cargo ? cargo.nome : String(b.cargo || '').trim().slice(0, 80), timeId, recebeLeads: b.papel === 'vendedor' && b.recebeLeads !== false, telefone: String(b.telefone || '').trim().slice(0, 40), em: Date.now(), por: me.id });
+      kv.set('prov:' + id, '1');
       return send(res, 200, { id, email, senha });
     }
     if (p === '/api/contas/senha' && M === 'POST') {
@@ -308,9 +344,13 @@ async function api(req, res, url) {
       if (kv.get('owner') === u.id && u.id !== me.id) throw err(403, 'not_granted', 'A senha do dono só pode ser trocada por ele mesmo ou pelo servidor.');
       const senha = String(b.password || '') || novaSenha();
       if (senha.length < 8) throw err(400, 'invalid_argument', 'A senha precisa ter pelo menos 8 caracteres.');
-      Q.userPass.run(hashPass(senha), u.email); falhas.delete(u.email);
+      Q.userPass.run(hashPass(senha), u.email); falhas.delete(u.email); kv.set('prov:' + u.id, '1');
       return send(res, 200, { email: u.email, senha });
     }
+  }
+  if (p === '/api/rodizio' && M === 'GET') {
+    if (!papel) throw err(403, 'not_granted', 'Sem acesso.');
+    return send(res, 200, { ultimo: kv.get('rodizio_ultimo') });
   }
   if (p === '/api/ai' && M === 'POST') {
     if (!papel) throw err(403, 'not_granted', 'Sem acesso.');
@@ -333,14 +373,108 @@ async function api(req, res, url) {
   throw err(404, 'invalid_argument', 'Rota não encontrada.');
 }
 
+// ---------- loja virtual (pública) ----------
+const lojaTries = new Map();
+function lojaLimite(req) {
+  const ip = ipDe(req), now = Date.now(); const t = (lojaTries.get(ip) || []).filter(x => now - x < 600000); t.push(now); lojaTries.set(ip, t);
+  if (t.length > 8) throw err(429, 'resource_exhausted', 'Muitos envios seguidos. Aguarde alguns minutos ou fale com a gente pelo WhatsApp.');
+}
+setInterval(() => { const now = Date.now(); for (const [k, t] of lojaTries) if (!t.some(x => now - x < 600000)) lojaTries.delete(k); }, 10 * 60000).unref();
+const txt = (v, n = 120) => String(v ?? '').trim().slice(0, n);
+const dig = v => String(v || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+// acha o cliente pelo telefone ou e-mail; se não existir, cria como lead do site já com vendedor do rodízio
+function clienteDoSite(c, etapa, nota) {
+  const nome = txt(c.nome, 120), tel = dig(c.telefone), email = txt(c.email, 120).toLowerCase();
+  if (nome.length < 2) throw err(400, 'invalid_argument', 'Informe seu nome ou o nome da empresa.');
+  if (tel.length < 10 || tel.length > 11) throw err(400, 'invalid_argument', 'Informe um WhatsApp com DDD.');
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) throw err(400, 'invalid_argument', 'Informe um e-mail válido.');
+  const tipo = ['Academia', 'Equipe/Time', 'Escolinha de futebol', 'Loja', 'Distribuidor', 'Atleta', 'Pessoa física'].includes(c.tipo) ? c.tipo : 'Pessoa física';
+  const documento = txt(c.documento, 20);
+  const classificacao = classificar({ documento, tipo });
+  const agora = Date.now();
+  const achado = store.list('clientes').find(r => (dig(r.data.telefone) === tel) || (email && String(r.data.email || '').toLowerCase() === email));
+  if (achado) {
+    const d = achado.data;
+    const patch = { historico: [...(d.historico || []), { txt: nota, em: agora, por: null }], atualizadoEm: agora };
+    if (!d.classificacao) patch.classificacao = classificacao;
+    if (!d.responsavel) patch.responsavel = proximoVendedor();
+    if (!d.documento && documento) patch.documento = documento;
+    if (d.etapa === 'perdido') patch.etapa = etapa;
+    store.update('clientes', achado.id, patch);
+    return { id: achado.id, ...d, ...patch };
+  }
+  const id = rid();
+  const novo = {
+    nome, contato: txt(c.contato, 80) || nome, telefone: txt(c.telefone, 30), email, documento, cidade: txt(c.cidade, 80), tipo, classificacao,
+    origem: 'Loja virtual / site', etapa, responsavel: proximoVendedor(), valorEstimado: 0, modalidades: txt(c.interesse, 200),
+    proximaAcao: 'Responder contato do site', dataProxima: agora, consentWhats: !!c.consentWhats, consentEmail: !!c.consentEmail, consentEm: c.consentWhats || c.consentEmail ? agora : null,
+    entradaSite: true, criadoEm: agora, atualizadoEm: agora, criadoPor: null, historico: [{ txt: nota, em: agora, por: null }],
+  };
+  store.set('clientes', id, novo);
+  return { id, ...novo };
+}
+function tarefaDoSite(titulo, descricao, cliente, vendaId) {
+  const agora = Date.now();
+  store.set('tarefas', rid(), { titulo, descricao, coluna: 'afazer', prioridade: 'alta', responsavel: cliente.responsavel || null, prazo: agora + 864e5, clienteId: cliente.id, vendaId: vendaId || null, origem: 'site', ordem: agora, criadoEm: agora, criadoPor: null });
+}
+async function loja(req, res, p, M) {
+  if (p === '/api/loja/produtos' && M === 'GET') {
+    const l = store.list('produtos').filter(r => r.data.ativo !== false && (Number(r.data.preco) || 0) > 0).map(({ id, data: d }) => ({
+      id, nome: d.nome, variacao: d.variacao || '', categoria: d.categoria || 'Outro', unidade: d.unidade || 'un', descricao: d.descricao || '', imagem: d.imagem || '',
+      preco: Number(d.preco) || 0, precoAtacado: Number(d.precoAtacado) || 0, minimoAtacado: Number(d.minimoAtacado) || 0, disponivel: (Number(d.estoque) || 0) > 0,
+    }));
+    return send(res, 200, l);
+  }
+  if (p === '/api/loja/pedido' && M === 'POST') {
+    lojaLimite(req);
+    const b = await body(req);
+    const brutos = Array.isArray(b.itens) ? b.itens.slice(0, 50) : [];
+    const itens = [];
+    for (const i of brutos) {
+      const pr = store.get('produtos', String(i.produtoId || ''));
+      const qtd = Math.floor(Number(i.qtd));
+      if (!pr || pr.ativo === false || !(qtd >= 1 && qtd <= 10000)) continue;
+      itens.push({ pr, produtoId: String(i.produtoId), qtd });
+    }
+    if (!itens.length) throw err(400, 'invalid_argument', 'O carrinho está vazio ou tem produtos que saíram de linha.');
+    const pagamento = ['Pix', 'Boleto', 'Cartão de crédito'].includes(b.pagamento) ? b.pagamento : 'Pix';
+    const numero = codigo('PV');
+    const cliente = clienteDoSite(b.cliente || {}, 'proposta', `Pedido ${numero} feito na loja virtual`);
+    const cl = cliente.classificacao || classificar(cliente);
+    // o preço é sempre recalculado aqui: o valor enviado pelo navegador é ignorado
+    const linhas = itens.map(x => ({ produtoId: x.produtoId, qtd: x.qtd, valor: precoItem(x.pr, x.qtd, cl) }));
+    const total = linhas.reduce((s, x) => s + x.qtd * x.valor, 0);
+    const agora = Date.now(), vid = rid();
+    store.set('vendas', vid, {
+      numero, clienteId: cliente.id, data: agora, prazo: null, pagamento, itens: linhas, subtotal: total, desconto: 0, frete: 0, total, status: 'orcamento',
+      origem: 'site', classificacao: cl, vendedor: cliente.responsavel || null, obs: txt(b.obs, 500), personalizado: false, campanhaId: null, criadoEm: agora, criadoPor: null, atualizadoEm: agora,
+    });
+    if (['lead', 'contato'].includes(cliente.etapa)) store.update('clientes', cliente.id, { etapa: 'proposta' });
+    tarefaDoSite(`Atender pedido do site ${numero}`, `${cliente.nome} · ${linhas.length} item(ns) · ${cl} · total R$ ${total.toFixed(2).replace('.', ',')} · pagamento ${pagamento}. Confirmar estoque, frete e enviar o pedido no WhatsApp.`, cliente, vid);
+    return send(res, 200, { numero, total, classificacao: cl, itens: linhas });
+  }
+  if (p === '/api/loja/atacado' && M === 'POST') {
+    lojaLimite(req);
+    const b = await body(req);
+    const c = { ...b, tipo: b.tipo || 'Loja' };
+    const nota = `Pedido de cadastro de atacado pelo site${b.interesse ? ': ' + txt(b.interesse, 200) : ''}${b.quantidade ? ' · volume: ' + txt(b.quantidade, 60) : ''}`;
+    const cliente = clienteDoSite(c, 'lead', nota);
+    if (cliente.classificacao !== 'Atacado') store.update('clientes', cliente.id, { classificacao: 'Atacado' });
+    tarefaDoSite(`Retornar lead de atacado: ${cliente.nome}`, nota, cliente, null);
+    return send(res, 200, { ok: true });
+  }
+  throw err(404, 'invalid_argument', 'Rota não encontrada.');
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://local');
   try {
     if (url.pathname.startsWith('/api/')) return await api(req, res, url);
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      if (!session(req)) { res.writeHead(302, { location: '/login.html' }); return res.end(); }
-      return file(res, 'index.html');
-    }
+    // login e sistema ficam no mesmo arquivo: a própria página decide o que mostrar
+    // a loja virtual fica na raiz e o CRM em /crm
+    if (url.pathname === '/' || url.pathname === '/site.html') return file(res, 'site.html');
+    if (url.pathname === '/crm' || url.pathname === '/crm/') return file(res, 'index.html');
+    if (url.pathname === '/index.html' || url.pathname === '/login.html') { res.writeHead(302, { location: '/crm' + url.search }); return res.end(); }
     return file(res, url.pathname.slice(1));
   } catch (e) {
     const st = e.status || 500; if (st === 500) console.error(e);
@@ -362,8 +496,13 @@ if (args[0] === '--importar') {
   console.log(`${n} registros importados.`); process.exit(0);
 }
 
+if (!kv.get('cargos_padrao')) {
+  for (const [id, nome, perfil] of CARGOS_PADRAO) if (!store.get('cargos', id)) store.set('cargos', id, { nome, perfil, padrao: true, criadoEm: Date.now() });
+  kv.set('cargos_padrao', '1');
+}
+
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Draven CRM rodando em http://localhost:${PORT}`);
+  console.log(`Draven Sports no ar: loja em http://localhost:${PORT}/ e CRM em http://localhost:${PORT}/crm`);
   if (!kv.get('owner')) console.log(OWNER_EMAIL ? `Aguardando o primeiro acesso de ${OWNER_EMAIL}, que será o dono do sistema.` : 'ATENÇÃO: nenhum dono cadastrado e OWNER_EMAIL vazio. A primeira conta criada vira a dona do sistema. Defina OWNER_EMAIL no .env antes de deixar o endereço público.');
   wa.boot();
 });
