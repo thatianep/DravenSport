@@ -395,6 +395,29 @@ dialog{border:1px solid var(--line)}
   .qrwrap{grid-template-columns:1fr;justify-items:center}
   .qrbox{width:240px;height:240px}
 }
+
+/* ===== menu do usuário ===== */
+.hdr .me{position:relative;padding:0;border:0;background:none}
+.ubtn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:12px;color:var(--muted)}
+.ubtn:hover,.ubtn[aria-expanded="true"]{border-color:var(--accent)}
+.ubtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ubtn img{width:34px;height:34px;border-radius:9px}
+.ubtn strong{display:block;color:var(--fg);font-size:13px;font-weight:700;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ubtn > svg,.ubtn > i{width:10px;height:10px;color:var(--muted)}
+.umenu{position:absolute;right:0;top:calc(100% + 8px);z-index:40;width:270px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.16);padding:8px;display:flex;flex-direction:column;gap:2px}
+.umenu button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--fg)}
+.umenu button svg,.umenu button i{width:15px;height:15px;color:var(--accent-text)}
+.umenu button:hover,.umenu button:focus-visible{background:var(--surface-2)}
+.umenu .sair{color:var(--red)}.umenu .sair svg,.umenu .sair i{color:var(--red)}
+.umenu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.uhead{display:flex;gap:12px;align-items:center;padding:8px 10px 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.uhead img{width:42px;height:42px;border-radius:11px}
+.uhead div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.uhead b{font-size:14px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uhead small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uhead .pill{align-self:flex-start}
+.uhead.grande{border:1px solid var(--line);border-radius:12px;margin:0}
+@media (max-width:900px){.ubtn .mt,.ubtn > svg,.ubtn > i{display:none}.ubtn{padding:4px}}
 </style>
 </head>
 <body>
@@ -549,7 +572,7 @@ function render(){
   const m=$('#main');
   if(S.offline){m.innerHTML=telaCentro('Sem conexão com o servidor','Não foi possível falar com o servidor da Draven. Verifique a internet e recarregue a página.');return}
   if(!S.ready.equipe){return}
-  if(!papel()){m.innerHTML=telaCentro('Acesso aguardando liberação','Seu acesso já foi registrado. Peça para alguém da gestão abrir a aba Equipe e definir seu perfil: Vendas, Estoque ou Gestão.');return}
+  if(!papel()){m.innerHTML=telaCentro('Acesso aguardando liberação','Seu acesso já foi registrado. Peça para alguém da gestão abrir a aba Equipe e definir seu perfil: Vendas, Estoque ou Gestão.').replace('</p></div></div>','</p><button class="btn" data-a="trocar-usuario">Entrar com outra conta</button></div></div>');return}
   const v=VIEWS.find(v=>v.id===S.view&&v.p.includes(papel()))||VIEWS[0];
   S.view=v.id;
   const V=VIEWFN[v.id];
@@ -564,10 +587,18 @@ function telaCentro(t,d){return`<div class="center"><div class="box"><h1>${esc(t
 function renderNav(){
   const p=papel();
   const pend=S.acessos.filter(a=>!S.equipe[a.id]).length;
-  $('#nav').innerHTML=!p?'':VIEWS.filter(v=>v.p.includes(p)).map(v=>`<button data-go="${v.id}" ${v.id===S.view?'aria-current="page"':''}>${icone(v.id)}<span>${v.nome}</span>${v.id==='equipe'&&pend?`<span class="badge">${pend}${v.id==='conversas'&&S.conversas.some(c=>c.naoLidas)?`<span class="badge">${S.conversas.filter(c=>c.naoLidas).length}</span>`:''}</span>`:''}</button>`).join('');
+  $('#nav').innerHTML=!p?'':VIEWS.filter(v=>v.p.includes(p)).map(v=>`<button data-go="${v.id}" ${v.id===S.view?'aria-current="page"':''}>${icone(v.id)}<span>${v.nome}</span>${v.id==='equipe'&&pend?`<span class="badge">${pend}</span>`:''}${v.id==='conversas'&&S.conversas.some(c=>c.naoLidas)?`<span class="badge">${S.conversas.filter(c=>c.naoLidas).length}</span>`:''}</button>`).join('');
   const tn=$('#topNovo');if(tn)tn.hidden=!pode('vendas');const tl=$('#topLead');if(tl)tl.hidden=!pode('crm');
   const me=$('#me');
-  if(S.me){me.innerHTML=`<img src="${esc(S.me.avatarUrl)}" alt=""><div class="mt"><strong></strong><span>${p?esc(PAPEIS[p]):'Sem perfil'}${S.ro?' · somente leitura':''}</span></div>`;$('strong',me).textContent=S.me.name||'Você';me.insertAdjacentHTML('beforeend','<button class="btn ghost sm" data-a="sair" title="Sair" aria-label="Sair"><i class="fa-solid fa-right-from-bracket"></i></button>')}
+  if(S.me){const um0=$('#umenu');const aberto=um0?!um0.hidden:false;
+    me.innerHTML=`<button type="button" class="ubtn" data-a="umenu" aria-haspopup="true" aria-expanded="${aberto}"><img src="${esc(S.me.avatarUrl)}" alt=""><span class="mt"><strong></strong><span>${p?esc(PAPEIS[p]):'Sem perfil'}${S.ro?' · somente leitura':''}</span></span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="umenu" id="umenu" role="menu" ${aberto?'':'hidden'}><div class="uhead"><img src="${esc(S.me.avatarUrl)}" alt=""><div><b></b><small></small><span class="pill acc">${p?esc(PAPEIS[p]):'Sem perfil'}</span></div></div>
+    <button type="button" role="menuitem" data-a="minha-conta"><i class="fa-solid fa-user-gear"></i> Minha conta</button>
+    <button type="button" role="menuitem" data-a="trocar-senha"><i class="fa-solid fa-key"></i> Trocar minha senha</button>
+    ${p==='gestao'?'<button type="button" role="menuitem" data-go="equipe"><i class="fa-solid fa-user-shield"></i> Logins da equipe</button>':''}
+    <hr><button type="button" role="menuitem" data-a="trocar-usuario"><i class="fa-solid fa-users-between-lines"></i> Trocar de usuário</button>
+    <button type="button" role="menuitem" class="sair" data-a="sair"><i class="fa-solid fa-right-from-bracket"></i> Sair</button></div>`;
+    $('.ubtn strong',me).textContent=S.me.name||'Você';$('.uhead b',me).textContent=S.me.name||'Você';$('.uhead small',me).textContent=S.me.email||''}
 }
 
 // ---------- PAINEL ----------
@@ -1411,6 +1442,31 @@ function formWaMsg(clienteId){
   async fd=>{try{const r=await waApi('/api/wa/send',{clienteId,conexaoId:fd.get('conexaoId'),texto:fd.get('texto')});toast('Mensagem enviada');setTimeout(()=>abrirConversa(r.conversaId),50);return true}catch(e){toast(e.message||'Não foi possível enviar.');return false}},{submitLabel:'Enviar'});
 }
 
+// ---------- MINHA CONTA ----------
+function formMinhaConta(){
+  abrir('Minha conta',`
+  <div class="uhead grande"><img src="${esc(S.me.avatarUrl)}" alt=""><div><b id="mc-nm"></b><small id="mc-em"></small><span class="pill acc">${esc(PAPEIS[papel()]||'Sem perfil')}</span></div></div>
+  <label class="f">Nome que aparece para a equipe<input class="inp" id="mc-nome" name="nome" required maxlength="80"></label>
+  <label class="f">E-mail de acesso<input class="inp" id="mc-email" disabled></label>
+  <p class="ro" style="margin:0">Para mudar o e-mail de acesso, peça para a gestão criar uma conta nova com o e-mail certo.</p>
+  <div class="tools"><button type="button" class="btn" data-a="trocar-senha"><i class="fa-solid fa-key"></i> Trocar minha senha</button><button type="button" class="btn" data-a="trocar-usuario"><i class="fa-solid fa-users-between-lines"></i> Trocar de usuário</button></div>`,
+  async fd=>{const nome=String(fd.get('nome')||'').trim();try{await window.DRAVEN.api('/api/conta/nome',{method:'POST',body:{name:nome}});toast('Nome atualizado');setTimeout(()=>location.reload(),600);return true}catch(e){toast(e.message||'Não foi possível salvar.');return false}},{submitLabel:'Salvar nome'});
+  $('#mc-nm').textContent=S.me.name||'';$('#mc-em').textContent=S.me.email||'';$('#mc-nome').value=S.me.name||'';$('#mc-email').value=S.me.email||'';
+}
+function formTrocarSenha(){
+  abrir('Trocar minha senha',`
+  <label class="f">Senha atual *<input class="inp" id="ts-a" name="atual" type="password" autocomplete="current-password" required></label>
+  <label class="f">Nova senha * <span class="ro">(mínimo 8 caracteres)</span><input class="inp" id="ts-n" name="nova" type="password" autocomplete="new-password" required minlength="8"></label>
+  <label class="f">Repita a nova senha *<input class="inp" id="ts-r" name="repete" type="password" autocomplete="new-password" required></label>
+  <p class="ro" style="margin:0">Depois da troca, outros computadores e celulares conectados nesta conta precisam entrar de novo. Este continua conectado.</p>
+  <p class="err" id="v-err" hidden></p>`,
+  async fd=>{
+    if(fd.get('nova')!==fd.get('repete')){erro('#v-err','As duas senhas novas não são iguais.');return false}
+    try{await window.DRAVEN.api('/api/conta/senha',{method:'POST',body:{atual:fd.get('atual'),nova:fd.get('nova')}});toast('Senha alterada');return true}
+    catch(e){erro('#v-err',e.message||'Não foi possível trocar a senha.');return false}
+  },{submitLabel:'Trocar senha'});
+}
+
 // ---------- EQUIPE ----------
 function vEquipe(){
   const pend=S.acessos.filter(a=>!S.equipe[a.id]&&a.id!==S.myId);
@@ -1555,6 +1611,7 @@ $('#dlgForm').addEventListener('change',e=>{
 
 // ---------- eventos ----------
 document.addEventListener('click',async e=>{
+  if(!e.target.closest('#me')){const mn=$('#umenu');if(mn&&!mn.hidden){mn.hidden=true;$('.ubtn')?.setAttribute('aria-expanded','false')}}else if(e.target.closest('#umenu [data-a],#umenu [data-go]')){$('#umenu').hidden=true}
   const go=e.target.closest('[data-go]');if(go){S.view=go.dataset.go;store('dv-view',S.view);render();$('main').scrollTop=0;window.scrollTo(0,0);return}
   const lk=e.target.closest('a[data-envio],a[data-npsped]');
   if(lk){if(lk.dataset.envio)marcarEnvio(DLG.ctx.id,lk.dataset.envio);else salvar('vendas',lk.dataset.npsped,{npsPedidoEm:Date.now()}).catch(()=>{});return}
@@ -1600,7 +1657,10 @@ document.addEventListener('click',async e=>{
     case'fechar-conv':S.convSel=null;if(MSGS_UNSUB){MSGS_UNSUB();MSGS_UNSUB=null}render();break;
     case'cv-enviar':enviarConversa(id,el);break;
     case'wa-msg':formWaMsg(id);break;
-    case'sair':try{await window.DRAVEN.api('/api/auth/logout',{method:'POST',body:{}})}catch(err){}location.href='/login.html';break;
+    case'sair':case'trocar-usuario':try{await window.DRAVEN.api('/api/auth/logout',{method:'POST',body:{}})}catch(err){}location.href='/login.html?'+(a==='sair'?'saiu=1':'trocar=1');break;
+    case'umenu':{const mn=$('#umenu');mn.hidden=!mn.hidden;el.setAttribute('aria-expanded',!mn.hidden);break}
+    case'minha-conta':formMinhaConta();break;
+    case'trocar-senha':formTrocarSenha();break;
     case'importar-leads':formImportar();break;
     case'edit-cliente':{const c=cli(id);if(c)formCliente(c);break}
     case'crm-modo':S.crmModo=el.dataset.v;store('dv-crm',S.crmModo);render();break;
@@ -1625,7 +1685,7 @@ document.addEventListener('click',async e=>{
       ...S.produtos.map(p=>[p.sku,p.nome,p.variacao,p.categoria,p.unidade,p.estoque||0,p.minimo||0,...(pode('custo')?[br(p.custo)]:[]),br(p.preco)])]);break;
   }
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#gres').hidden=true;if(e.key==='Enter'&&!e.shiftKey&&e.target.id==='cv-txt'){e.preventDefault();enviarConversa(S.convSel,null);return}if(e.key==='Enter'&&e.target.classList?.contains('card'))e.target.click()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#gres').hidden=true;const mn=$('#umenu');if(mn)mn.hidden=true}if(e.key==='Enter'&&!e.shiftKey&&e.target.id==='cv-txt'){e.preventDefault();enviarConversa(S.convSel,null);return}if(e.key==='Enter'&&e.target.classList?.contains('card'))e.target.click()});
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset.waleads){col('whatsapp').doc(t.dataset.waleads).update({leadsDaEquipe:t.checked}).then(()=>toast(t.checked?'Conversas iniciadas pela equipe também viram lead':'Conversas iniciadas pela equipe ficam só em Conversas')).catch(()=>{});return}
